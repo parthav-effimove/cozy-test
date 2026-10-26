@@ -1,0 +1,13 @@
+
+Running 1 test using 1 worker
+
+--- sheet 1/1: FUGA
+sheet 1 FUGA (after vessel): AE not settled on attempt 1: load: wanted 0.1, got 2.04; discharge: wanted 0, got 2.04
+sheet 1 FUGA (after vessel): AE not settled on attempt 2: load: wanted 0.1, got 2.04; discharge: wanted 0, got 2.04
+sheet 1 FUGA (after vessel): AE not settled on attempt 3: load: wanted 0.1, got 2.04; discharge: wanted 0, got 2.04
+sheet 1 FUGA (after sequence): AE not settled on attempt 1: load: wanted 0.1, got 2.04
+saved sheet 1/1
+  ✓  1 [chrome] › tests/oct21-json-replay.spec.ts:230:7 › oct21.json replay › replay 1 sheets from /tmp/sheet17only (2.0m)
+
+  1 passed (2.1m)
+EXIT=0

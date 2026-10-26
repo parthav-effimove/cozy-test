@@ -1,0 +1,40 @@
+
+Running 1 test using 1 worker
+
+--- sheet 1/1: STAR LIBRA
+Rotterdam: no suggestion on attempt 1
+Rotterdam: no suggestion on attempt 2
+Rotterdam: no suggestion on attempt 3
+Rotterdam: no suggestion on attempt 4
+Rotterdam: no suggestion on attempt 5
+Rotterdam: no suggestion on attempt 6
+  ✘  1 [chrome-headless] › tests/oct21-json-replay.spec.ts:421:7 › oct21.json replay › replay 1 sheets from balast/sheet18.json (4.7m)
+
+
+  1) [chrome-headless] › tests/oct21-json-replay.spec.ts:421:7 › oct21.json replay › replay 1 sheets from balast/sheet18.json 
+
+    Error: no backend suggestion for "Rotterdam"
+
+      110 |     await page.waitForTimeout(700 * attempt);
+      111 |   }
+    > 112 |   throw new Error(`no backend suggestion for "${query}"`);
+          |         ^
+      113 | }
+      114 |
+      115 | // Search text typed into the port field when it differs from the JSON port name.
+        at searchAndPick (/Users/parthavpovil/Downloads/test-cozy/tests/oct21-json-replay.spec.ts:112:9)
+        at /Users/parthavpovil/Downloads/test-cozy/tests/oct21-json-replay.spec.ts:482:9
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/oct21-json-replay-oct21-js-231b6-ts-from-balast-sheet18-json-chrome-headless/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/oct21-json-replay-oct21-js-231b6-ts-from-balast-sheet18-json-chrome-headless/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/oct21-json-replay-oct21-js-231b6-ts-from-balast-sheet18-json-chrome-headless/error-context.md
+
+  1 failed
+    [chrome-headless] › tests/oct21-json-replay.spec.ts:421:7 › oct21.json replay › replay 1 sheets from balast/sheet18.json 
+EXIT=1

@@ -1,0 +1,133 @@
+
+Running 1 test using 1 worker
+
+--- sheet 1/18: STAR LEO
+sheet 1 STAR LEO: Voyage Summary 40 checked, 0 mismatch(es)
+saved sheet 1/18
+--- sheet 2/18: SEA ARROW
+MISMATCH sheet 2 SEA ARROW Incl Hire: wanted 747033.81, got $ 744,226.33
+MISMATCH sheet 2 SEA ARROW NTCE: wanted 164446.37, got $ 164,552.42
+MISMATCH sheet 2 SEA ARROW GTCE: wanted 173101.44, got $ 173,213.08
+MISMATCH sheet 2 SEA ARROW Gross Rate: wanted 15.13, got $ 15.07 /mt
+MISMATCH sheet 2 SEA ARROW P&L: wanted 4684216.19, got $ 4,687,023.67
+MISMATCH sheet 2 SEA ARROW P&L/d: wanted 164351.37, got $ 164,449.87
+MISMATCH sheet 2 SEA ARROW UK CO2: wanted 68.66, got 0.00 t
+MISMATCH sheet 2 SEA ARROW VLSFO Fuel EU Penalty: wanted 0, got $ 13,030.68
+MISMATCH sheet 2 SEA ARROW LSMGO Fuel EU Penalty: wanted 0, got $ 5,966.33
+MISMATCH sheet 2 SEA ARROW Total cost for Fuel EU: wanted 0, got $ 18,997.01
+MISMATCH sheet 2 SEA ARROW FuelEU Freight Impact: wanted 0, got $ 0.38 /mt
+sheet 2 SEA ARROW: Voyage Summary 40 checked, 11 mismatch(es)
+saved sheet 2/18
+--- sheet 3/18: SEA ARROW
+MISMATCH sheet 3 SEA ARROW Incl Hire: wanted 740033.81, got $ 740,033.69
+MISMATCH sheet 3 SEA ARROW P&L: wanted 4691216.19, got $ 4,691,216.31
+MISMATCH sheet 3 SEA ARROW UK CO2: wanted 68.66, got 0.00 t
+sheet 3 SEA ARROW: Voyage Summary 40 checked, 3 mismatch(es)
+saved sheet 3/18
+--- sheet 4/18: SEA ARROW
+MISMATCH sheet 4 SEA ARROW UK CO2: wanted 68.66, got 0.00 t
+sheet 4 SEA ARROW: Voyage Summary 40 checked, 1 mismatch(es)
+saved sheet 4/18
+--- sheet 5/18: FUGA
+sheet 5 FUGA: Voyage Summary 40 checked, 0 mismatch(es)
+saved sheet 5/18
+--- sheet 6/18: FUGA
+sheet 6 FUGA: Voyage Summary 40 checked, 0 mismatch(es)
+saved sheet 6/18
+--- sheet 7/18: FUGA
+sheet 7 FUGA: Voyage Summary 40 checked, 0 mismatch(es)
+saved sheet 7/18
+--- sheet 8/18: FUGA
+MISMATCH sheet 8 FUGA Incl Hire: wanted 161013.28, got $ 161,013.33
+MISMATCH sheet 8 FUGA P&L: wanted 2437736.72, got $ 2,437,736.67
+MISMATCH sheet 8 FUGA UK CO2: wanted 159.46, got 0.00 t
+MISMATCH sheet 8 FUGA Total UK ETS CO2 cost: wanted 15946.26, got $ 0.00
+MISMATCH sheet 8 FUGA CO2 Cost per tonne: wanted 100, got $ 0.00 /t
+MISMATCH sheet 8 FUGA UK ETS Freight Impact: wanted 0.53, got $ 0.00 /mt
+sheet 8 FUGA: Voyage Summary 40 checked, 6 mismatch(es)
+saved sheet 8/18
+--- sheet 9/18: STAR LEO
+MISMATCH sheet 9 STAR LEO Gross Rate: row not found in Voyage Summary
+MISMATCH sheet 9 STAR LEO UK CO2: wanted 250.92, got 0.00 t
+MISMATCH sheet 9 STAR LEO Total UK ETS CO2 cost: wanted 25092.33, got $ 0.00
+MISMATCH sheet 9 STAR LEO CO2 Cost per tonne: wanted 100, got $ 0.00 /t
+MISMATCH sheet 9 STAR LEO UK ETS Freight Impact: wanted 0.42, got $ 0.00 /mt
+sheet 9 STAR LEO: Voyage Summary 39 checked, 5 mismatch(es)
+saved sheet 9/18
+--- sheet 10/18: STAR LEO
+MISMATCH sheet 10 STAR LEO Incl Hire: wanted 559272.47, got $ 559,272.58
+MISMATCH sheet 10 STAR LEO Gross Rate: row not found in Voyage Summary
+MISMATCH sheet 10 STAR LEO P&L: wanted 5298227.53, got $ 5,298,227.42
+MISMATCH sheet 10 STAR LEO UK CO2: wanted 250.92, got 0.00 t
+MISMATCH sheet 10 STAR LEO Total UK ETS CO2 cost: wanted 25092.33, got $ 0.00
+MISMATCH sheet 10 STAR LEO CO2 Cost per tonne: wanted 100, got $ 0.00 /t
+MISMATCH sheet 10 STAR LEO UK ETS Freight Impact: wanted 0.42, got $ 0.00 /mt
+MISMATCH sheet 10 STAR LEO HSFO Fuel EU Penalty: wanted 0, got $ 14,809.90
+MISMATCH sheet 10 STAR LEO LSMGO Fuel EU Penalty: wanted 0, got $ 103.08
+MISMATCH sheet 10 STAR LEO Total cost for Fuel EU: wanted 0, got $ 14,912.98
+MISMATCH sheet 10 STAR LEO FuelEU Freight Impact: wanted 0, got $ 0.25 /mt
+sheet 10 STAR LEO: Voyage Summary 39 checked, 11 mismatch(es)
+saved sheet 10/18
+--- sheet 11/18: SEA ARROW
+MISMATCH sheet 11 SEA ARROW Incl Hire: wanted 591663.76, got $ 591,663.90
+MISMATCH sheet 11 SEA ARROW Gross Rate: row not found in Voyage Summary
+MISMATCH sheet 11 SEA ARROW P&L: wanted 7958336.24, got $ 7,958,336.10
+MISMATCH sheet 11 SEA ARROW UK CO2: wanted 340.17, got 62.52 t
+sheet 11 SEA ARROW: Voyage Summary 39 checked, 4 mismatch(es)
+saved sheet 11/18
+--- sheet 12/18: FUGA
+MISMATCH sheet 12 FUGA Gross Rate: row not found in Voyage Summary
+sheet 12 FUGA: Voyage Summary 39 checked, 1 mismatch(es)
+saved sheet 12/18
+--- sheet 13/18: JIN HAI HUA
+MISMATCH sheet 13 JIN HAI HUA Incl Hire: wanted 1371182.55, got $ 1,371,182.65
+MISMATCH sheet 13 JIN HAI HUA P&L: wanted 2333817.45, got $ 2,333,817.35
+sheet 13 JIN HAI HUA: Voyage Summary 40 checked, 2 mismatch(es)
+saved sheet 13/18
+--- sheet 14/18: STAR LIBRA
+MISMATCH sheet 14 STAR LIBRA Gross Rate: row not found in Voyage Summary
+sheet 14 STAR LIBRA: Voyage Summary 39 checked, 1 mismatch(es)
+saved sheet 14/18
+--- sheet 15/18: FUGA
+MISMATCH sheet 15 FUGA Gross Rate: row not found in Voyage Summary
+MISMATCH sheet 15 FUGA UK CO2: wanted 43.76, got 0.00 t
+sheet 15 FUGA: Voyage Summary 39 checked, 2 mismatch(es)
+saved sheet 15/18
+--- sheet 16/18: EVA RICHMOND
+sheet 16 EVA RICHMOND: Voyage Summary 40 checked, 0 mismatch(es)
+saved sheet 16/18
+--- sheet 17/18: FUGA
+sheet 17 FUGA: Voyage Summary 40 checked, 0 mismatch(es)
+saved sheet 17/18
+--- sheet 18/18: STAR LIBRA
+  ✘  1 [chrome] › tests/oct21-json-replay.spec.ts:401:7 › oct21.json replay › replay 18 sheets from balast (30.3m)
+
+
+  1) [chrome] › tests/oct21-json-replay.spec.ts:401:7 › oct21.json replay › replay 18 sheets from balast 
+
+    SyntaxError: Unexpected end of JSON input
+
+      585 |       if (existsSync(outFile)) {
+      586 |         await page.waitForLoadState('networkidle').catch(() => {});
+    > 587 |         await compareSummary(page, JSON.parse(readFileSync(outFile, 'utf8')), who);
+          |                                         ^
+      588 |       }
+      589 |
+      590 |       // 6. Save the sheet.
+        at /Users/parthavpovil/Downloads/test-cozy/tests/oct21-json-replay.spec.ts:587:41
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/oct21-json-replay-oct21-js-e671c-eplay-18-sheets-from-balast-chrome/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/oct21-json-replay-oct21-js-e671c-eplay-18-sheets-from-balast-chrome/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/oct21-json-replay-oct21-js-e671c-eplay-18-sheets-from-balast-chrome/error-context.md
+
+  Slow test file: [chrome] › tests/oct21-json-replay.spec.ts (30.3m)
+  Consider running tests from slow files in parallel. See: https://playwright.dev/docs/test-parallel
+  1 failed
+    [chrome] › tests/oct21-json-replay.spec.ts:401:7 › oct21.json replay › replay 18 sheets from balast 
+EXIT=1

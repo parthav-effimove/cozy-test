@@ -1,0 +1,114 @@
+
+> voyagecalc-playwright-suite@1.0.0 replay:folder
+> REPLAY_DIR=${REPLAY_DIR:-balast} playwright test tests/oct21-json-replay.spec.ts --project=chrome --workers=1 --reporter=list
+
+
+Running 1 test using 1 worker
+
+--- sheet 1/17: STAR LEO
+saved sheet 1/17
+--- sheet 2/17: SEA ARROW
+saved sheet 2/17
+--- sheet 3/17: SEA ARROW
+saved sheet 3/17
+--- sheet 4/17: SEA ARROW
+saved sheet 4/17
+--- sheet 5/17: FUGA
+saved sheet 5/17
+--- sheet 6/17: FUGA
+saved sheet 6/17
+--- sheet 7/17: FUGA
+saved sheet 7/17
+--- sheet 8/17: FUGA
+saved sheet 8/17
+--- sheet 9/17: STAR LEO
+saved sheet 9/17
+--- sheet 10/17: STAR LEO
+saved sheet 10/17
+--- sheet 11/17: SEA ARROW
+saved sheet 11/17
+--- sheet 12/17: FUGA
+saved sheet 12/17
+--- sheet 13/17: JIN HAI HUA
+saved sheet 13/17
+--- sheet 14/17: STAR LIBRA
+saved sheet 14/17
+--- sheet 15/17: FUGA
+saved sheet 15/17
+--- sheet 16/17: EVA RICHMOND
+saved sheet 16/17
+--- sheet 17/17: FUGA
+saved sheet 17/17
+  ✘  1 [chrome] › tests/oct21-json-replay.spec.ts:162:7 › oct21.json replay › replay 17 sheets from balast (16.9m)
+
+
+  1) [chrome] › tests/oct21-json-replay.spec.ts:162:7 › oct21.json replay › replay 17 sheets from balast 
+
+    Error: fields that did not keep the JSON value:
+    #v-vessel-matrix_ae_idle-_: wanted 0.1, got "2.04"
+    #v-vessel-matrix_ae_load-_: wanted 0.1, got "2.04"
+    #v-vessel-matrix_ae_discharge-_: wanted 0.1, got "2.04"
+    #v-vessel-matrix_ae_idle-_: wanted 0.1, got "2.04"
+    #v-vessel-matrix_ae_idle-_: wanted 0.1, got "2.04"
+    #v-vessel-matrix_ae_load-_: wanted 0.1, got "2.04"
+    #v-vessel-matrix_ae_discharge-_: wanted 0.1, got "2.04"
+    #v-vessel-matrix_ae_idle-_: wanted 0.1, got "2.04"
+    #v-vessel-matrix_ae_load-_: wanted 0.1, got "2.04"
+    #v-vessel-matrix_ae_discharge-_: wanted 0.1, got "2.04"
+    #v-vessel-matrix_ae_idle-_: wanted 1.2, got "2.04"
+    #v-vessel-matrix_ae_load-_: wanted 1.2, got "2.04"
+    #v-vessel-matrix_ae_discharge-_: wanted 1.2, got "2.04"
+    #v-vessel-matrix_ae_idle-_: wanted 1.2, got "2.04"
+    #v-vessel-matrix_ae_discharge-_: wanted 1.2, got "2.04"
+    #v-vessel-matrix_ae_idle-_: wanted 0, got "2.04"
+    #v-vessel-matrix_ae_discharge-_: wanted 0, got "2.04"
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 19
+
+    - Array []
+    + Array [
+    +   "#v-vessel-matrix_ae_idle-_: wanted 0.1, got \"2.04\"",
+    +   "#v-vessel-matrix_ae_load-_: wanted 0.1, got \"2.04\"",
+    +   "#v-vessel-matrix_ae_discharge-_: wanted 0.1, got \"2.04\"",
+    +   "#v-vessel-matrix_ae_idle-_: wanted 0.1, got \"2.04\"",
+    +   "#v-vessel-matrix_ae_idle-_: wanted 0.1, got \"2.04\"",
+    +   "#v-vessel-matrix_ae_load-_: wanted 0.1, got \"2.04\"",
+    +   "#v-vessel-matrix_ae_discharge-_: wanted 0.1, got \"2.04\"",
+    +   "#v-vessel-matrix_ae_idle-_: wanted 0.1, got \"2.04\"",
+    +   "#v-vessel-matrix_ae_load-_: wanted 0.1, got \"2.04\"",
+    +   "#v-vessel-matrix_ae_discharge-_: wanted 0.1, got \"2.04\"",
+    +   "#v-vessel-matrix_ae_idle-_: wanted 1.2, got \"2.04\"",
+    +   "#v-vessel-matrix_ae_load-_: wanted 1.2, got \"2.04\"",
+    +   "#v-vessel-matrix_ae_discharge-_: wanted 1.2, got \"2.04\"",
+    +   "#v-vessel-matrix_ae_idle-_: wanted 1.2, got \"2.04\"",
+    +   "#v-vessel-matrix_ae_discharge-_: wanted 1.2, got \"2.04\"",
+    +   "#v-vessel-matrix_ae_idle-_: wanted 0, got \"2.04\"",
+    +   "#v-vessel-matrix_ae_discharge-_: wanted 0, got \"2.04\"",
+    + ]
+
+      365 |
+      366 |     expect(missingFields.size, `missing fields: ${[...missingFields].join(', ')}`).toBe(0);
+    > 367 |     expect(mismatches, `fields that did not keep the JSON value:\n${mismatches.join('\n')}`).toEqual([]);
+          |                                                                                              ^
+      368 |     expect(appErrors, `app errors:\n${appErrors.join('\n')}`).toEqual([]);
+      369 |   });
+      370 | });
+        at /Users/parthavpovil/Downloads/test-cozy/tests/oct21-json-replay.spec.ts:367:94
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/oct21-json-replay-oct21-js-9559f-eplay-17-sheets-from-balast-chrome/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/oct21-json-replay-oct21-js-9559f-eplay-17-sheets-from-balast-chrome/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/oct21-json-replay-oct21-js-9559f-eplay-17-sheets-from-balast-chrome/error-context.md
+
+  Slow test file: [chrome] › tests/oct21-json-replay.spec.ts (16.9m)
+  Consider running tests from slow files in parallel. See: https://playwright.dev/docs/test-parallel
+  1 failed
+    [chrome] › tests/oct21-json-replay.spec.ts:162:7 › oct21.json replay › replay 17 sheets from balast 

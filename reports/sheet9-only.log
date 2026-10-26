@@ -1,0 +1,59 @@
+
+Running 1 test using 1 worker
+
+--- sheet 1/1: STAR LEO
+MISMATCH sheet 1 STAR LEO Gross Rate: wanted 8.75, got $ 0.00 /mt
+MISMATCH sheet 1 STAR LEO UK CO2: wanted 250.92, got 0.00 t
+MISMATCH sheet 1 STAR LEO Total UK ETS CO2 cost: wanted 25092.33, got $ 0.00
+MISMATCH sheet 1 STAR LEO CO2 Cost per tonne: wanted 100, got $ 0.00 /t
+MISMATCH sheet 1 STAR LEO UK ETS Freight Impact: wanted 0.42, got $ 0.00 /mt
+sheet 1 STAR LEO: Voyage Summary 40 checked, 5 mismatch(es)
+saved sheet 1/1
+  ✘  1 [chrome] › tests/oct21-json-replay.spec.ts:404:7 › oct21.json replay › replay 1 sheets from /tmp/one9 (1.6m)
+
+
+  1) [chrome] › tests/oct21-json-replay.spec.ts:404:7 › oct21.json replay › replay 1 sheets from /tmp/one9 
+
+    Error: fields that did not keep the JSON value:
+    sheet 1 STAR LEO Gross Rate: wanted 8.75, got $ 0.00 /mt
+    sheet 1 STAR LEO UK CO2: wanted 250.92, got 0.00 t
+    sheet 1 STAR LEO Total UK ETS CO2 cost: wanted 25092.33, got $ 0.00
+    sheet 1 STAR LEO CO2 Cost per tonne: wanted 100, got $ 0.00 /t
+    sheet 1 STAR LEO UK ETS Freight Impact: wanted 0.42, got $ 0.00 /mt
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 7
+
+    - Array []
+    + Array [
+    +   "sheet 1 STAR LEO Gross Rate: wanted 8.75, got $ 0.00 /mt",
+    +   "sheet 1 STAR LEO UK CO2: wanted 250.92, got 0.00 t",
+    +   "sheet 1 STAR LEO Total UK ETS CO2 cost: wanted 25092.33, got $ 0.00",
+    +   "sheet 1 STAR LEO CO2 Cost per tonne: wanted 100, got $ 0.00 /t",
+    +   "sheet 1 STAR LEO UK ETS Freight Impact: wanted 0.42, got $ 0.00 /mt",
+    + ]
+
+      621 |
+      622 |     expect(missingFields.size, `missing fields: ${[...missingFields].join(', ')}`).toBe(0);
+    > 623 |     expect(mismatches, `fields that did not keep the JSON value:\n${mismatches.join('\n')}`).toEqual([]);
+          |                                                                                              ^
+      624 |     expect(appErrors, `app errors:\n${appErrors.join('\n')}`).toEqual([]);
+      625 |   });
+      626 | });
+        at /Users/parthavpovil/Downloads/test-cozy/tests/oct21-json-replay.spec.ts:623:94
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/oct21-json-replay-oct21-js-8b876-play-1-sheets-from-tmp-one9-chrome/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/oct21-json-replay-oct21-js-8b876-play-1-sheets-from-tmp-one9-chrome/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/oct21-json-replay-oct21-js-8b876-play-1-sheets-from-tmp-one9-chrome/error-context.md
+
+  1 failed
+    [chrome] › tests/oct21-json-replay.spec.ts:404:7 › oct21.json replay › replay 1 sheets from /tmp/one9 
+EXIT=1

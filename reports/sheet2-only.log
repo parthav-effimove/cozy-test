@@ -1,0 +1,81 @@
+
+Running 1 test using 1 worker
+
+--- sheet 1/1: SEA ARROW
+MISMATCH sheet 1 SEA ARROW Incl Hire: wanted 747033.81, got $ 744,226.33
+MISMATCH sheet 1 SEA ARROW NTCE: wanted 164446.37, got $ 164,552.42
+MISMATCH sheet 1 SEA ARROW GTCE: wanted 173101.44, got $ 173,213.08
+MISMATCH sheet 1 SEA ARROW Gross Rate: wanted 15.13, got $ 15.07 /mt
+MISMATCH sheet 1 SEA ARROW P&L: wanted 4684216.19, got $ 4,687,023.67
+MISMATCH sheet 1 SEA ARROW P&L/d: wanted 164351.37, got $ 164,449.87
+MISMATCH sheet 1 SEA ARROW UK CO2: wanted 68.66, got 0.00 t
+MISMATCH sheet 1 SEA ARROW VLSFO Fuel EU Penalty: wanted 0, got $ 13,030.68
+MISMATCH sheet 1 SEA ARROW LSMGO Fuel EU Penalty: wanted 0, got $ 5,966.33
+MISMATCH sheet 1 SEA ARROW Total cost for Fuel EU: wanted 0, got $ 18,997.01
+MISMATCH sheet 1 SEA ARROW FuelEU Freight Impact: wanted 0, got $ 0.38 /mt
+sheet 1 SEA ARROW: Voyage Summary 40 checked, 11 mismatch(es)
+saved sheet 1/1
+  ✘  1 [chrome] › tests/oct21-json-replay.spec.ts:404:7 › oct21.json replay › replay 1 sheets from /tmp/one2 (1.5m)
+
+
+  1) [chrome] › tests/oct21-json-replay.spec.ts:404:7 › oct21.json replay › replay 1 sheets from /tmp/one2 
+
+    Error: fields that did not keep the JSON value:
+    sheet 1 SEA ARROW NTC (#v-cargo-ntc-_): wanted 95, got 102.55
+    sheet 1 SEA ARROW Net BB (#v-cargo-netBB-_header): wanted 50000, got 53977.271
+    sheet 1 SEA ARROW Incl Hire: wanted 747033.81, got $ 744,226.33
+    sheet 1 SEA ARROW NTCE: wanted 164446.37, got $ 164,552.42
+    sheet 1 SEA ARROW GTCE: wanted 173101.44, got $ 173,213.08
+    sheet 1 SEA ARROW Gross Rate: wanted 15.13, got $ 15.07 /mt
+    sheet 1 SEA ARROW P&L: wanted 4684216.19, got $ 4,687,023.67
+    sheet 1 SEA ARROW P&L/d: wanted 164351.37, got $ 164,449.87
+    sheet 1 SEA ARROW UK CO2: wanted 68.66, got 0.00 t
+    sheet 1 SEA ARROW VLSFO Fuel EU Penalty: wanted 0, got $ 13,030.68
+    sheet 1 SEA ARROW LSMGO Fuel EU Penalty: wanted 0, got $ 5,966.33
+    sheet 1 SEA ARROW Total cost for Fuel EU: wanted 0, got $ 18,997.01
+    sheet 1 SEA ARROW FuelEU Freight Impact: wanted 0, got $ 0.38 /mt
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 15
+
+    - Array []
+    + Array [
+    +   "sheet 1 SEA ARROW NTC (#v-cargo-ntc-_): wanted 95, got 102.55",
+    +   "sheet 1 SEA ARROW Net BB (#v-cargo-netBB-_header): wanted 50000, got 53977.271",
+    +   "sheet 1 SEA ARROW Incl Hire: wanted 747033.81, got $ 744,226.33",
+    +   "sheet 1 SEA ARROW NTCE: wanted 164446.37, got $ 164,552.42",
+    +   "sheet 1 SEA ARROW GTCE: wanted 173101.44, got $ 173,213.08",
+    +   "sheet 1 SEA ARROW Gross Rate: wanted 15.13, got $ 15.07 /mt",
+    +   "sheet 1 SEA ARROW P&L: wanted 4684216.19, got $ 4,687,023.67",
+    +   "sheet 1 SEA ARROW P&L/d: wanted 164351.37, got $ 164,449.87",
+    +   "sheet 1 SEA ARROW UK CO2: wanted 68.66, got 0.00 t",
+    +   "sheet 1 SEA ARROW VLSFO Fuel EU Penalty: wanted 0, got $ 13,030.68",
+    +   "sheet 1 SEA ARROW LSMGO Fuel EU Penalty: wanted 0, got $ 5,966.33",
+    +   "sheet 1 SEA ARROW Total cost for Fuel EU: wanted 0, got $ 18,997.01",
+    +   "sheet 1 SEA ARROW FuelEU Freight Impact: wanted 0, got $ 0.38 /mt",
+    + ]
+
+      621 |
+      622 |     expect(missingFields.size, `missing fields: ${[...missingFields].join(', ')}`).toBe(0);
+    > 623 |     expect(mismatches, `fields that did not keep the JSON value:\n${mismatches.join('\n')}`).toEqual([]);
+          |                                                                                              ^
+      624 |     expect(appErrors, `app errors:\n${appErrors.join('\n')}`).toEqual([]);
+      625 |   });
+      626 | });
+        at /Users/parthavpovil/Downloads/test-cozy/tests/oct21-json-replay.spec.ts:623:94
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/oct21-json-replay-oct21-js-5496a-play-1-sheets-from-tmp-one2-chrome/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/oct21-json-replay-oct21-js-5496a-play-1-sheets-from-tmp-one2-chrome/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/oct21-json-replay-oct21-js-5496a-play-1-sheets-from-tmp-one2-chrome/error-context.md
+
+  1 failed
+    [chrome] › tests/oct21-json-replay.spec.ts:404:7 › oct21.json replay › replay 1 sheets from /tmp/one2 
+EXIT=1

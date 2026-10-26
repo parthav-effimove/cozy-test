@@ -1,0 +1,9 @@
+
+Running 1 test using 1 worker
+
+--- sheet 1/1: EVA RICHMOND
+saved sheet 1/1
+  ✓  1 [chrome] › tests/oct21-json-replay.spec.ts:230:7 › oct21.json replay › replay 1 sheets from /tmp/sheet16only (1.3m)
+
+  1 passed (1.4m)
+EXIT=0

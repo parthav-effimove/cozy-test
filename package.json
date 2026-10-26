@@ -1,0 +1,22 @@
+{
+  "name": "voyagecalc-playwright-suite",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Visual Playwright test suite for VoyageCalc voyage calculator (https://cozy-crafting-cloud.lovable.app/)",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed --project=chrome",
+    "test:chrome": "playwright test --headed --project=chrome --workers=1 --reporter=list",
+    "replay:folder": "REPLAY_DIR=${REPLAY_DIR:-balast} playwright test tests/oct21-json-replay.spec.ts --project=chrome --workers=1 --reporter=list",
+    "dashboard": "node dashboard/server.mjs",
+    "test:debug": "playwright test --debug --project=chrome",
+    "report": "playwright show-report",
+    "codegen": "playwright codegen https://cozy-crafting-cloud.lovable.app/"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@types/node": "^22.9.0",
+    "dotenv": "^16.4.5",
+    "typescript": "^5.9.3"
+  }
+}

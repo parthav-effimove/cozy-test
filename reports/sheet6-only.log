@@ -1,0 +1,10 @@
+
+Running 1 test using 1 worker
+
+--- sheet 1/1: FUGA
+sheet 1 FUGA: Voyage Summary 40 checked, 0 mismatch(es)
+saved sheet 1/1
+  ✓  1 [chrome] › tests/oct21-json-replay.spec.ts:401:7 › oct21.json replay › replay 1 sheets from /tmp/sheet6only (1.4m)
+
+  1 passed (1.5m)
+EXIT=0

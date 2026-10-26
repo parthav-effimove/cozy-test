@@ -1,0 +1,47 @@
+
+Running 1 test using 1 worker
+
+--- sheet 1/1: STAR LIBRA
+MISMATCH sheet 1 STAR LIBRA Gross Rate: wanted 6.62, got $ 0.00 /mt
+sheet 1 STAR LIBRA: Voyage Summary 40 checked, 1 mismatch(es)
+saved sheet 1/1
+  ✘  1 [chrome] › tests/oct21-json-replay.spec.ts:404:7 › oct21.json replay › replay 1 sheets from /tmp/one14 (1.5m)
+
+
+  1) [chrome] › tests/oct21-json-replay.spec.ts:404:7 › oct21.json replay › replay 1 sheets from /tmp/one14 
+
+    Error: fields that did not keep the JSON value:
+    sheet 1 STAR LIBRA Gross Rate: wanted 6.62, got $ 0.00 /mt
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "sheet 1 STAR LIBRA Gross Rate: wanted 6.62, got $ 0.00 /mt",
+    + ]
+
+      621 |
+      622 |     expect(missingFields.size, `missing fields: ${[...missingFields].join(', ')}`).toBe(0);
+    > 623 |     expect(mismatches, `fields that did not keep the JSON value:\n${mismatches.join('\n')}`).toEqual([]);
+          |                                                                                              ^
+      624 |     expect(appErrors, `app errors:\n${appErrors.join('\n')}`).toEqual([]);
+      625 |   });
+      626 | });
+        at /Users/parthavpovil/Downloads/test-cozy/tests/oct21-json-replay.spec.ts:623:94
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/oct21-json-replay-oct21-js-78881-lay-1-sheets-from-tmp-one14-chrome/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/oct21-json-replay-oct21-js-78881-lay-1-sheets-from-tmp-one14-chrome/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/oct21-json-replay-oct21-js-78881-lay-1-sheets-from-tmp-one14-chrome/error-context.md
+
+  1 failed
+    [chrome] › tests/oct21-json-replay.spec.ts:404:7 › oct21.json replay › replay 1 sheets from /tmp/one14 
+EXIT=1

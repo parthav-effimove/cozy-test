@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>VoyageCalc Test Console</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">V</span>
+        <span class="brand-text">
+          <strong>Test Console</strong>
+          <span>VoyageCalc sheet replays</span>
+        </span>
+      </div>
+      <div class="topbar-spacer"></div>
+      <label class="toggle">
+        <input type="checkbox" id="headed" checked />
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        <span class="toggle-label" title="Runs headed Chrome. Keep this on: the app only answers port searches for a visible browser, so headless runs stall on ports.">Watch browser</span>
+      </label>
+      <button type="button" class="btn btn-danger" id="stopRun" title="Kill the running test: Playwright and its browser" hidden>Kill run</button>
+      <span class="conn" id="conn" title="Server connection">Connected</span>
+    </header>
+
+    <div class="runbar" id="runbar" hidden>
+      <span class="runbar-status" id="runbarStatus">Running</span>
+      <div class="progress"><div class="progress-fill" id="progressFill"></div></div>
+      <span class="runbar-text" id="runbarText">Starting…</span>
+    </div>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <div class="side-head">
+          <span>Folders</span>
+          <button type="button" class="icon-btn" id="newFolder" title="New folder" aria-label="New folder">+</button>
+        </div>
+        <ul class="folder-list" id="folderList"></ul>
+        <div class="side-foot">
+          <span id="sheetTotal">0 sheets</span>
+        </div>
+      </aside>
+
+      <section class="content">
+        <nav class="tabs">
+          <button type="button" class="tab is-active" data-tab="sheets">Sheets</button>
+          <button type="button" class="tab" data-tab="outputs">Outputs</button>
+          <button type="button" class="tab" data-tab="workbooks">Workbooks</button>
+          <button type="button" class="tab" data-tab="runs">Runs <span class="tab-badge" id="runBadge" hidden></span></button>
+        </nav>
+
+        <div class="tabpane" id="tab-sheets">
+          <div class="pane-head">
+            <div>
+              <h2 id="folderTitle">Choose a folder</h2>
+              <p class="muted" id="folderMeta"></p>
+            </div>
+            <div class="actions">
+              <button type="button" class="btn btn-primary" id="runFolder">Run folder</button>
+              <button type="button" class="btn" id="newSheet">New sheet</button>
+              <label class="btn btn-quiet">
+                Import
+                <input type="file" id="importFile" accept="application/json,.json" hidden />
+              </label>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="grid" id="sheetTable">
+              <thead>
+                <tr>
+                  <th>Sheet</th>
+                  <th class="num">Sheets</th>
+                  <th class="num">Size</th>
+                  <th>Modified</th>
+                  <th class="right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="sheetRows"></tbody>
+            </table>
+            <p class="empty" id="sheetEmpty" hidden>No sheets in this folder yet.</p>
+          </div>
+        </div>
+
+        <div class="tabpane" id="tab-outputs" hidden>
+          <div class="pane-head">
+            <div>
+              <h2>Expected outputs</h2>
+              <p class="muted">Every sheet is compared with the file mapped to it. Create an output, or map an existing one.</p>
+            </div>
+            <div class="actions">
+              <button type="button" class="btn" id="mapByName">Map all by name</button>
+              <button type="button" class="btn" id="clearMapping">Clear</button>
+              <button type="button" class="btn btn-primary" id="addOutput">Add output</button>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <label class="field">
+              <span>Default output folder</span>
+              <input type="text" id="defaultOutputDir" placeholder="sheets/ballast-op" spellcheck="false" list="outputDirs" />
+              <datalist id="outputDirs"></datalist>
+            </label>
+            <label class="field">
+              <span>Amounts (±)</span>
+              <input type="number" id="tolAmount" min="0" step="0.01" placeholder="0.5" />
+            </label>
+            <label class="field">
+              <span>Rates &amp; quantities (±)</span>
+              <input type="number" id="tolRate" min="0" step="0.001" placeholder="0.01" />
+            </label>
+            <p class="hint" id="outputHint">Two groups, because they mean different things: currency totals may drift a little (they are summed from rounded figures), while per-mt rates, ratios and quantities must match closely. Text fields such as the CII rating stay exact. Unmapped sheets fall back to <code>&lt;default folder&gt;/&lt;same file name&gt;</code>. Changes save as you go.</p>
+          </div>
+
+          <details class="tolerance-panel" id="tolerancePanel">
+            <summary>
+              Per-field allowed difference
+              <span class="muted" id="toleranceCount"></span>
+            </summary>
+            <p class="hint">Blank uses the group default; <code>0</code> demands an exact match. Fields are keyed by their expected-output path, so the EU ETS and UK ETS <em>CO2 Cost per tonne</em> rows are set separately.</p>
+            <div class="tolerance-list" id="toleranceRows"></div>
+          </details>
+
+          <div class="coverage" id="coverage"></div>
+
+          <div class="mapping-tools">
+            <label class="check"><input type="checkbox" id="onlyUnmapped" /> Show only unmapped</label>
+            <span class="muted" id="mappingState"></span>
+          </div>
+
+          <div class="table-wrap">
+            <table class="grid" id="mappingTable">
+              <thead>
+                <tr>
+                  <th>Input sheet</th>
+                  <th>Expected output file</th>
+                  <th>Status</th>
+                  <th class="right"></th>
+                </tr>
+              </thead>
+              <tbody id="mappingRows"></tbody>
+            </table>
+            <p class="empty" id="mappingEmpty" hidden>Select a folder to map its sheets to expected outputs.</p>
+          </div>
+        </div>
+
+        <div class="tabpane" id="tab-workbooks" hidden>
+          <div class="pane-head">
+            <div>
+              <h2>Workbooks</h2>
+              <p class="muted">A named test: pick sheets from any folder, set the order, and run them together as one workbook. Add a note to a sheet that fails on purpose, and check its run history to see what fails every time.</p>
+            </div>
+            <div class="actions">
+              <button type="button" class="btn btn-primary" id="newWorkbook">New workbook</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="grid" id="workbookTable">
+              <thead>
+                <tr>
+                  <th>Test name</th>
+                  <th class="num">Sheets</th>
+                  <th>Modified</th>
+                  <th class="right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="workbookRows"></tbody>
+            </table>
+            <p class="empty" id="workbookEmpty" hidden>No workbooks yet. Create one to combine sheets from different folders.</p>
+          </div>
+        </div>
+
+        <div class="tabpane" id="tab-runs" hidden>
+          <div id="runView" class="run-view">
+            <p class="empty">No run yet. Start one from the Sheets tab.</p>
+          </div>
+
+          <div class="pane-head history-head">
+            <div>
+              <h2>Recent runs</h2>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="grid" id="historyTable">
+              <thead>
+                <tr>
+                  <th>Started</th>
+                  <th>Target</th>
+                  <th>Mode</th>
+                  <th>Status</th>
+                  <th class="num">Checked</th>
+                  <th class="num">Mismatches</th>
+                  <th class="right">Log</th>
+                </tr>
+              </thead>
+              <tbody id="historyRows"></tbody>
+            </table>
+            <p class="empty" id="historyEmpty" hidden>No runs recorded yet.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="editor" class="dialog">
+      <form method="dialog" class="dialog-body" id="editorForm">
+        <div class="dialog-head">
+          <h2 id="editorTitle">Edit sheet</h2>
+          <button type="button" class="icon-btn" id="editorClose" aria-label="Close">×</button>
+        </div>
+        <label class="field" id="editorNameField">
+          <span>File name</span>
+          <input type="text" id="editorName" spellcheck="false" />
+        </label>
+        <label class="field grow">
+          <span>Sheet JSON</span>
+          <textarea id="editorText" spellcheck="false"></textarea>
+        </label>
+        <div class="dialog-foot">
+          <span class="validation" id="editorStatus"></span>
+          <button type="button" class="btn btn-quiet" id="editorFormat">Format</button>
+          <button type="button" class="btn" id="editorCancel">Cancel</button>
+          <button type="button" class="btn btn-primary" id="editorSave">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="workbookDialog" class="dialog">
+      <div class="dialog-body">
+        <div class="dialog-head">
+          <h2 id="workbookTitle">New workbook</h2>
+          <button type="button" class="icon-btn" id="workbookClose" aria-label="Close">×</button>
+        </div>
+        <label class="field">
+          <span>Test name</span>
+          <input type="text" id="workbookName" placeholder="e.g. ballast regression 25 Oct" />
+          <span class="hint">This name is also given to the workbook the run creates in the app.</span>
+        </label>
+        <div class="wb-builder">
+          <section class="wb-col">
+            <div class="wb-col-head">
+              <strong>Available sheets</strong>
+              <select id="workbookFolder" class="wb-folder" aria-label="Sheet folder"></select>
+            </div>
+            <input type="search" class="wb-filter" id="workbookFilter" placeholder="Filter sheets…" spellcheck="false" />
+            <div class="wb-available" id="workbookPick"></div>
+            <div class="wb-col-foot">
+              <label class="check"><input type="checkbox" id="workbookAll" /> Select all</label>
+              <button type="button" class="btn btn-primary btn-sm" id="workbookAdd">Add selected</button>
+            </div>
+          </section>
+          <section class="wb-col">
+            <div class="wb-col-head">
+              <strong>Test sheets <span class="tag" id="workbookCount">0</span></strong>
+              <span class="hint">runs top to bottom</span>
+            </div>
+            <ol class="wb-list" id="workbookSheets"></ol>
+          </section>
+        </div>
+        <div class="dialog-foot">
+          <span class="validation" id="workbookStatus"></span>
+          <button type="button" class="btn btn-quiet" id="workbookCancel">Cancel</button>
+          <button type="button" class="btn btn-primary" id="workbookSave">Save</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="notesDialog" class="dialog">
+      <div class="dialog-body">
+        <div class="dialog-head">
+          <h2 id="notesTitle">Sheet notes</h2>
+          <button type="button" class="icon-btn" id="notesClose" aria-label="Close">×</button>
+        </div>
+        <p class="hint" id="notesHint">A note sticks to a sheet inside this test, so the next run tells you why it fails instead of looking like a regression. Tick <em>expected to fail</em> for sheets that are known-bad.</p>
+        <div class="notes-list" id="notesRows"></div>
+        <div class="dialog-foot">
+          <span class="validation" id="notesStatus"></span>
+          <button type="button" class="btn" id="notesCancel">Close</button>
+          <button type="button" class="btn btn-primary" id="notesSave">Save notes</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="historyDialog" class="dialog dialog-wide">
+      <div class="dialog-body">
+        <div class="dialog-head">
+          <h2 id="historyTitle">Run history</h2>
+          <button type="button" class="icon-btn" id="historyClose" aria-label="Close">×</button>
+        </div>
+        <div class="history-summary" id="historySummary"></div>
+        <h3 class="history-subhead">Sheets</h3>
+        <div class="table-wrap">
+          <table class="grid" id="wbSheetTable">
+            <thead>
+              <tr>
+                <th>Sheet</th>
+                <th class="num">Runs</th>
+                <th class="num">Failed</th>
+                <th>Last failure</th>
+                <th>Note</th>
+              </tr>
+            </thead>
+            <tbody id="wbSheetRows"></tbody>
+          </table>
+          <p class="empty" id="wbSheetEmpty" hidden>No sheet results recorded for this test yet.</p>
+        </div>
+        <h3 class="history-subhead">Runs</h3>
+        <div class="table-wrap">
+          <table class="grid" id="wbRunTable">
+            <thead>
+              <tr>
+                <th>Started</th>
+                <th>Status</th>
+                <th class="num">Sheets</th>
+                <th class="num">Checked</th>
+                <th class="num">Mismatches</th>
+                <th>Duration</th>
+                <th class="right"></th>
+              </tr>
+            </thead>
+            <tbody id="wbRunRows"></tbody>
+          </table>
+          <p class="empty" id="wbRunEmpty" hidden>This test has not been run yet.</p>
+        </div>
+        <div class="dialog-foot">
+          <span class="validation" id="historyStatus"></span>
+          <button type="button" class="btn" id="historyCancel">Close</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="outputDialog" class="dialog">
+      <div class="dialog-body">
+        <div class="dialog-head">
+          <h2>Add expected output</h2>
+          <button type="button" class="icon-btn" id="outputClose" aria-label="Close">×</button>
+        </div>
+        <p class="hint" id="outputForHint"></p>
+        <div class="field-row">
+          <label class="field">
+            <span>Folder</span>
+            <input type="text" id="outputFolder" spellcheck="false" list="outputDirs" />
+          </label>
+          <label class="field">
+            <span>File name</span>
+            <input type="text" id="outputName" spellcheck="false" />
+          </label>
+        </div>
+        <label class="field">
+          <span>Content</span>
+          <select id="outputSource">
+            <option value="blank">Blank template (zeros, edit or re-run later)</option>
+            <option value="copy">Copy an existing output file</option>
+            <option value="paste">Paste JSON</option>
+          </select>
+        </label>
+        <label class="field" id="outputCopyField" hidden>
+          <span>Copy from</span>
+          <select id="outputCopyFrom"></select>
+        </label>
+        <label class="field grow" id="outputPasteField" hidden>
+          <span>JSON</span>
+          <textarea id="outputPaste" spellcheck="false"></textarea>
+        </label>
+        <div class="dialog-foot">
+          <span class="validation" id="outputStatus"></span>
+          <button type="button" class="btn" id="outputCancel">Cancel</button>
+          <button type="button" class="btn btn-primary" id="outputSave">Create &amp; map</button>
+        </div>
+      </div>
+    </dialog>
+
+    <div class="toast-stack" id="toasts" aria-live="polite"></div>
+    <script src="/app.js"></script>
+  </body>
+</html>

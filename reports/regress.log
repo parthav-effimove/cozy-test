@@ -1,0 +1,43 @@
+
+Running 1 test using 1 worker
+
+--- workbook: oct21 replay 1792938028478
+--- tolerance: amounts ±0.5, rates/quantities ±0.01
+--- sheet 1/1: STAR LEO
+Haldia: no suggestion on attempt 1
+Haldia: no suggestion on attempt 2
+Haldia: no suggestion on attempt 3
+Haldia: no suggestion on attempt 4
+Haldia: no suggestion on attempt 5
+Haldia: no suggestion on attempt 6
+  ✘  1 [chromium-headless] › tests/oct21-json-replay.spec.ts:440:7 › oct21.json replay › replay 1 sheets from balast/sheet1.json (5.3m)
+
+
+  1) [chromium-headless] › tests/oct21-json-replay.spec.ts:440:7 › oct21.json replay › replay 1 sheets from balast/sheet1.json 
+
+    Error: no backend suggestion for "Haldia"
+
+      136 |     await page.waitForTimeout(700 * attempt);
+      137 |   }
+    > 138 |   throw new Error(`no backend suggestion for "${query}"`);
+          |         ^
+      139 | }
+      140 |
+      141 | // Search text typed into the port field when it differs from the JSON port name.
+        at searchAndPick (/Users/parthavpovil/Downloads/test-cozy/tests/oct21-json-replay.spec.ts:138:9)
+        at /Users/parthavpovil/Downloads/test-cozy/tests/oct21-json-replay.spec.ts:507:9
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/regress/oct21-json-replay-oct21-js-8afd2-ets-from-balast-sheet1-json-chromium-headless/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/regress/oct21-json-replay-oct21-js-8afd2-ets-from-balast-sheet1-json-chromium-headless/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/regress/oct21-json-replay-oct21-js-8afd2-ets-from-balast-sheet1-json-chromium-headless/error-context.md
+
+  Slow test file: [chromium-headless] › tests/oct21-json-replay.spec.ts (5.3m)
+  Consider running tests from slow files in parallel. See: https://playwright.dev/docs/test-parallel
+  1 failed
+    [chromium-headless] › tests/oct21-json-replay.spec.ts:440:7 › oct21.json replay › replay 1 sheets from balast/sheet1.json 

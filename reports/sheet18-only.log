@@ -1,0 +1,10 @@
+
+Running 1 test using 1 worker
+
+--- sheet 1/1: STAR LIBRA
+sheet 1 STAR LIBRA: Voyage Summary 40 checked, 0 mismatch(es)
+saved sheet 1/1
+  ✓  1 [chrome] › tests/oct21-json-replay.spec.ts:404:7 › oct21.json replay › replay 1 sheets from /tmp/one18 (1.7m)
+
+  1 passed (1.8m)
+EXIT=0

@@ -1,0 +1,59 @@
+{
+  "name": "test 2",
+  "sheets": [
+    {
+      "path": "balast/sheet1.json"
+    },
+    {
+      "path": "balast/sheet2.json"
+    },
+    {
+      "path": "balast/sheet3.json"
+    },
+    {
+      "path": "balast/sheet4.json"
+    },
+    {
+      "path": "balast/sheet5.json"
+    },
+    {
+      "path": "balast/sheet6.json"
+    },
+    {
+      "path": "balast/sheet7.json"
+    },
+    {
+      "path": "balast/sheet8.json"
+    },
+    {
+      "path": "balast/sheet9.json"
+    },
+    {
+      "path": "balast/sheet10.json"
+    },
+    {
+      "path": "balast/sheet11.json"
+    },
+    {
+      "path": "balast/sheet12.json"
+    },
+    {
+      "path": "balast/sheet13.json"
+    },
+    {
+      "path": "balast/sheet14.json"
+    },
+    {
+      "path": "balast/sheet15.json"
+    },
+    {
+      "path": "balast/sheet16.json"
+    },
+    {
+      "path": "balast/sheet17.json"
+    },
+    {
+      "path": "balast/sheet18.json"
+    }
+  ]
+}

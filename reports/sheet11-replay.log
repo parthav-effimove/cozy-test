@@ -1,0 +1,34 @@
+
+Running 1 test using 1 worker
+
+[1/1] [chromium-headless] › tests/oct21-json-replay.spec.ts:143:7 › oct21.json replay › replay 1 sheets from balast/sheet11.json
+[chromium-headless] › tests/oct21-json-replay.spec.ts:143:7 › oct21.json replay › replay 1 sheets from balast/sheet11.json
+--- sheet 1/1: SEA ARROW
+
+  1) [chromium-headless] › tests/oct21-json-replay.spec.ts:143:7 › oct21.json replay › replay 1 sheets from balast/sheet11.json 
+
+    Error: no backend suggestion for "Rotterdam"
+
+       99 |     if (val) return val;
+      100 |   }
+    > 101 |   throw new Error(`no backend suggestion for "${query}"`);
+          |         ^
+      102 | }
+      103 |
+      104 | // Search text typed into the port field when it differs from the JSON port name.
+        at searchAndPick (/Users/parthavpovil/Downloads/test-cozy/tests/oct21-json-replay.spec.ts:101:9)
+        at /Users/parthavpovil/Downloads/test-cozy/tests/oct21-json-replay.spec.ts:227:9
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/oct21-json-replay-oct21-js-20a3f-ts-from-balast-sheet11-json-chromium-headless/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/oct21-json-replay-oct21-js-20a3f-ts-from-balast-sheet11-json-chromium-headless/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/oct21-json-replay-oct21-js-20a3f-ts-from-balast-sheet11-json-chromium-headless/error-context.md
+
+
+  1 failed
+    [chromium-headless] › tests/oct21-json-replay.spec.ts:143:7 › oct21.json replay › replay 1 sheets from balast/sheet11.json 

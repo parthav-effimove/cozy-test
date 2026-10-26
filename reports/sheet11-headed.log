@@ -1,0 +1,8 @@
+
+Running 1 test using 1 worker
+
+--- sheet 1/1: SEA ARROW
+saved sheet 1/1
+  ✓  1 [chrome] › tests/oct21-json-replay.spec.ts:143:7 › oct21.json replay › replay 1 sheets from balast/sheet11.json (1.5m)
+
+  1 passed (1.6m)

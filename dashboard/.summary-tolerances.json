@@ -1,0 +1,8 @@
+{
+  "amount": 0.5,
+  "rate": 0.01,
+  "fields": {
+    "hire.incl_hire": 1,
+    "hire.excl_hire": 1
+  }
+}

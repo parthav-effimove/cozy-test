@@ -1,0 +1,17 @@
+node_modules/
+test-results/
+playwright-report/
+playwright/.cache/
+screenshots/
+*.png
+# dashboard runtime state
+dashboard/history.json
+dashboard/logs/
+dashboard/mapping.json
+dashboard/.summary-map.json
+# sheet notes + per-workbook run history (SQLite)
+dashboard/state.db
+dashboard/state.db-wal
+dashboard/state.db-shm
+.env
+!/.env.example

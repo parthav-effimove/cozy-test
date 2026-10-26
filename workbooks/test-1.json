@@ -1,0 +1,14 @@
+{
+  "name": "test 1",
+  "sheets": [
+    {
+      "path": "balast/sheet1.json"
+    },
+    {
+      "path": "balast/sheet17.json"
+    },
+    {
+      "path": "balast/sheet18.json"
+    }
+  ]
+}
