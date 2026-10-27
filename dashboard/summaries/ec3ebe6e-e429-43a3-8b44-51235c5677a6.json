@@ -1,0 +1,7 @@
+{
+  "id": "ec3ebe6e-e429-43a3-8b44-51235c5677a6",
+  "text": "STANDS OUT: 6 of 25 sheets failed, and Gross Rate is the shared field on three of them.\nLIKELY CAUSE: two sheets render Gross Rate as zero, which points at the cargo card rather than the rate.\nNEXT STEP: open sheet 22 and check the cargo card expands before saving.",
+  "model": "mock-model",
+  "at": 1793006878504,
+  "digestLength": 190
+}

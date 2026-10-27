@@ -1,0 +1,7 @@
+{
+  "id": "8e1e9e0a-403b-4766-9197-cbd7983424c7",
+  "text": "STANDS OUT: Sheet #1 “CL FOSHAN” failed due to a TimeoutError on a locator.click.  \nLIKELY CAUSE: The element was not interactable within 15 s, possibly because the page did not load fully or the selector is incorrect.  \nNEXT STEP: Inspect the selector for the click target on sheet #1 and increase the timeout or add a wait for the element to be visible before clicking.",
+  "model": "openai/gpt-oss-20b",
+  "at": 1793007909374,
+  "digestLength": 259
+}

@@ -101,6 +101,11 @@ export function createStore(file) {
        WHERE r.workbook = ? ORDER BY r.started_at DESC`,
     ),
     totalRuns: db.prepare('SELECT COUNT(*) AS n FROM runs WHERE workbook = ?'),
+    fieldsFor: db.prepare(
+      `SELECT rs.fields, rs.sheet_path, r.id AS run_id, r.started_at
+       FROM run_sheets rs JOIN runs r ON r.id = rs.run_id
+       WHERE r.workbook = ? ORDER BY r.started_at DESC`,
+    ),
   };
 
   const noteRow = (row) => ({
@@ -226,6 +231,60 @@ export function createStore(file) {
         sheets.set(key, entry);
       }
       return { runs, sheets: [...sheets.values()], totalRuns: stmt.totalRuns.get(name).n };
+    },
+
+    /**
+     * Which fields actually differ, across runs: a sheet list answers "does sheet 9 fail", this
+     * answers "is Gross Rate broken everywhere, or only on sheets with two cargoes".
+     */
+    fieldHistory(name) {
+      const byField = new Map();
+      for (const row of stmt.fieldsFor.all(name)) {
+        let fields;
+        try {
+          fields = JSON.parse(row.fields || '[]');
+        } catch {
+          fields = [];
+        }
+        for (const entry of fields) {
+          // Older rows stored a plain string instead of { field, expected, actual }.
+          const field = typeof entry === 'string' ? entry : entry.field;
+          if (!field) continue;
+          const seen = byField.get(field) ?? {
+            field,
+            failures: 0,
+            runs: new Set(),
+            sheets: new Set(),
+            last: null,
+          };
+          seen.failures += 1;
+          seen.runs.add(row.run_id);
+          if (row.sheet_path) seen.sheets.add(row.sheet_path);
+          if (!seen.last || row.started_at > seen.last.startedAt) {
+            seen.last = {
+              expected: entry.expected ?? '',
+              actual: entry.actual ?? '',
+              sheet: row.sheet_path,
+              startedAt: row.started_at,
+            };
+          }
+          byField.set(field, seen);
+        }
+      }
+      const totalRuns = stmt.totalRuns.get(name).n;
+      return {
+        totalRuns,
+        fields: [...byField.values()]
+          .map((entry) => ({
+            field: entry.field,
+            failures: entry.failures,
+            runs: entry.runs.size,
+            totalRuns,
+            sheets: [...entry.sheets].sort(),
+            last: entry.last,
+          }))
+          .sort((a, b) => b.runs - a.runs || b.failures - a.failures || a.field.localeCompare(b.field)),
+      };
     },
 
     close() {

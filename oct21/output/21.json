@@ -1,0 +1,66 @@
+{
+  "hire": {
+    "incl_hire": 1727190.49,
+    "excl_hire": 821472.08
+  },
+  "time": {
+    "ballast_days": 3.64,
+    "laden_days": 6.21,
+    "at_sea_days": 9.85,
+    "in_port_canal_days": 12.56,
+    "total_time_days": 22.41
+  },
+  "cargo_economics": {
+    "ntce": 617457.37,
+    "gtce": 631088.89,
+    "cargo_1_gross_rate_per_mt": 21.98,
+    "cargo_1_quantity_mt": 82100,
+    "pnl": 12931438,
+    "pnl_per_day": 577041.37,
+    "net_freight": 14658628.49,
+    "gross_freight": 15312471,
+    "bunker_cost": 449272.08,
+    "total_hsfo_t": 0,
+    "hsfo_for_eu_ets_fuel_eu_t": 0,
+    "total_vlsfo_t": 341.04,
+    "vlsfo_for_eu_ets_fuel_eu_t": 284.5,
+    "total_lsmgo_t": 56,
+    "lsmgo_for_eu_ets_fuel_eu_t": 53.17
+  },
+  "environmental": {
+    "eeoi_gco2_per_tnm": 8.2,
+    "aer_cii_gco2_per_dwtnm": 10.14,
+    "estimated_voyage_cii_rating": "E"
+  },
+  "eu_ets": {
+    "total_co2_t": 1254.15,
+    "total_co2_cost": 0,
+    "eua_co2_t": 1066.92,
+    "total_eua_co2_cost": 0,
+    "co2_cost_per_t": 0,
+    "eua_freight_impact_per_mt": 0,
+    "apply_eua_freight_impact": false,
+    "warnings": [
+      "CO₂ price not set - ETS cost will be zero"
+    ]
+  },
+  "uk_ets": {
+    "uk_co2_t": 0,
+    "total_uk_ets_co2_cost": 0,
+    "co2_cost_per_t": 0,
+    "uk_ets_freight_impact_per_mt": 0,
+    "apply_uk_ets_freight_impact": false
+  },
+  "fuel_eu_maritime": {
+    "wind_reward_factor": 1,
+    "hsfo_fuel_eu_penalty": 0,
+    "hsfo_penalty_per_t": 69.52,
+    "vlsfo_fuel_eu_penalty": 17168.08,
+    "vlsfo_penalty_per_t": 60.34,
+    "lsmgo_fuel_eu_penalty": 2346.85,
+    "lsmgo_penalty_per_t": 44.14,
+    "total_fuel_eu_cost": 19514.93,
+    "fuel_eu_freight_impact_per_mt": 0.24,
+    "apply_fuel_eu_freight_impact": false
+  }
+}

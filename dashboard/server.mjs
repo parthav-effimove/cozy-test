@@ -1,10 +1,12 @@
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
+import dotenv from 'dotenv';
 import { randomUUID } from 'node:crypto';
-import { existsSync } from 'node:fs';
-import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { createReadStream, existsSync } from 'node:fs';
+import { copyFile, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { createStore, importLegacyRuns } from './db.mjs';
+import { buildDigest, SUMMARY_SYSTEM_PROMPT } from './digest.mjs';
 
 /**
  * Local test console for the VoyageCalc Playwright suite.
@@ -16,6 +18,7 @@ import { createStore, importLegacyRuns } from './db.mjs';
  */
 
 const ROOT = process.env.DASHBOARD_ROOT ? resolve(process.env.DASHBOARD_ROOT) : process.cwd();
+dotenv.config({ path: join(ROOT, '.env') });
 const PUBLIC = join(ROOT, 'dashboard', 'public');
 const DATA = join(ROOT, 'dashboard');
 const PORT = Number(process.env.DASHBOARD_PORT ?? 4317);
@@ -88,6 +91,12 @@ const OUTPUT_TEMPLATE = {
   },
 };
 
+// How much Playwright slows every action down. A six-leg sheet is hundreds of actions, so this value
+// dominates run time; 'watch' is the old default, 'fast' removes the pause completely.
+// Measured on sheet 18 (6 legs): watch 132 s, normal 86 s. 0 ms is not usable — the app's port
+// lookup stops answering when the browser is not slowed at all, so 'fast' keeps a small pause.
+const SPEEDS = { watch: 150, normal: 60, fast: 25 };
+
 const MAPPING_FILE = join(DATA, 'mapping.json');
 const HISTORY_FILE = join(DATA, 'history.json');
 // Folders created from the UI. They are remembered because a folder with no sheets yet cannot be
@@ -98,6 +107,12 @@ const STATE_DB = join(DATA, 'state.db');
 // A workbook is one named test: an ordered list of sheets that may come from any folder.
 const WORKBOOK_DIR = join(ROOT, 'workbooks');
 const LOG_DIR = join(DATA, 'logs');
+// Playwright writes failure screenshots and recordings into test-results, which the next run wipes.
+// Each finished run copies its own into dashboard/artifacts/<run id>/ so the evidence survives.
+const ARTIFACT_DIR = join(DATA, 'artifacts');
+const KEEP_ARTIFACT_RUNS = 8;
+// One short summary per finished run, generated from the structure-only digest in digest.mjs.
+const SUMMARY_DIR = join(DATA, 'summaries');
 
 // ---------------------------------------------------------------- helpers
 
@@ -137,7 +152,7 @@ async function writeJson(file, value) {
 // Allowed difference between an expected number and the one on screen.
 // Amounts are currency totals summed from rounded figures, so they get slack; rates, ratios and
 // quantities stay tight. "fields" overrides both, keyed by the expected-output path of the field.
-const DEFAULT_TOLERANCE = { amount: 0.5, rate: 0.01, fields: {} };
+const DEFAULT_TOLERANCE = { amount: 0.5, rate: 0.01, fields: {}, skip: {} };
 
 const tolNum = (value, fallback) => {
   const n = Number(value);
@@ -152,11 +167,18 @@ function normaliseTolerance(raw, legacyAmount) {
     const n = Number(value);
     if (Number.isFinite(n) && n >= 0) fields[path] = n;
   }
+  // Fields switched off in the dashboard. Only the explicit ones are stored, so every field the
+  // summary gains later is checked by default.
+  const skip = {};
+  for (const [path, value] of Object.entries(src.skip && typeof src.skip === 'object' ? src.skip : {})) {
+    if (path && value) skip[path] = true;
+  }
   return {
     // An older global value becomes the amount default; rates and quantities start tight.
     amount: tolNum(src.amount, legacyAmount ?? DEFAULT_TOLERANCE.amount),
     rate: tolNum(src.rate, DEFAULT_TOLERANCE.rate),
     fields,
+    skip,
   };
 }
 
@@ -278,6 +300,21 @@ async function listFolders() {
   return folders;
 }
 
+/**
+ * Stamp added to the app workbook name, so running the same test twice does not reuse the workbook
+ * the previous run created (the app opens a workbook on its last sheet, which then gets overwritten).
+ * Seconds are included because a short failing run can finish inside a minute.
+ * -> "Oct 26 11:20:37 pm"
+ */
+function runStamp(date = new Date()) {
+  const month = date.toLocaleString('en-GB', { month: 'short' });
+  const hours24 = date.getHours();
+  const suffix = hours24 >= 12 ? 'pm' : 'am';
+  const hours = hours24 % 12 || 12;
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${month} ${date.getDate()} ${hours}:${pad(date.getMinutes())}:${pad(date.getSeconds())} ${suffix}`;
+}
+
 /** A filesystem-safe file name for a workbook, derived from the test name the user typed. */
 const slug = (name) =>
   String(name ?? '')
@@ -378,8 +415,11 @@ async function saveHistory() {
     target: run.target,
     path: run.path,
     name: run.name ?? null,
+    appWorkbook: run.appWorkbook ?? null,
     tolerance: run.tolerance ?? null,
     headed: run.headed,
+    speed: run.speed ?? 'watch',
+    shards: run.shards ?? 1,
     status: run.status,
     startedAt: run.startedAt,
     finishedAt: run.finishedAt,
@@ -410,8 +450,11 @@ function publicRun(run) {
     target: run.target,
     path: run.path,
     name: run.name ?? null,
+    appWorkbook: run.appWorkbook ?? null,
     tolerance: run.tolerance ?? null,
     headed: run.headed,
+    speed: run.speed ?? 'watch',
+    shards: run.shards ?? 1,
     status: run.status,
     startedAt: run.startedAt,
     finishedAt: run.finishedAt,
@@ -531,8 +574,97 @@ function parseMismatch(run, text) {
   sheet.mismatches.push({ field: tail, expected: '', actual: '' });
 }
 
-async function startRun({ target, path, headed }) {
-  if (activeRunId) throw new HttpError(409, 'A run is already in progress. Stop it or wait for it to finish.');
+/**
+ * Cheap checks before a replay: app reachable, login works, and the backend still answers port
+ * searches (the step that silently fails in headless mode and kills sheet 1 minutes in).
+ */
+async function runPreflight({ headed = true, speed = 'normal' } = {}) {
+  const env = { ...process.env, SLOW_MO: String(SPEEDS[speed] ?? SPEEDS.normal) };
+  // The replay's own inputs must not leak into the preflight spec.
+  for (const key of [
+    'REPLAY_FILE',
+    'REPLAY_DIR',
+    'REPLAY_LIST',
+    'WORKBOOK_NAME',
+    'REPLAY_SHARD_COUNT',
+    'REPLAY_SHARD_INDEX',
+    'WORKBOOK_CREATE',
+    'REQUIRE_EXPECTED',
+    'SUMMARY_MAP',
+  ]) {
+    delete env[key];
+  }
+  const args = [
+    'playwright',
+    'test',
+    'tests/preflight.spec.ts',
+    '--project',
+    headed ? 'chrome' : 'chromium-headless',
+    '--workers=1',
+    '--reporter=list',
+  ];
+  const child = spawn('npx', args, { cwd: ROOT, env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  let out = '';
+  const collect = (chunk) => {
+    out += chunk.toString();
+    if (out.length > 400_000) out = out.slice(-300_000);
+  };
+  child.stdout.on('data', collect);
+  child.stderr.on('data', collect);
+
+  const exitCode = await new Promise((resolve) => {
+    // A hung browser must not block the run request forever.
+    const timer = setTimeout(() => {
+      try {
+        process.kill(-child.pid, 'SIGKILL');
+      } catch {
+        /* already gone */
+      }
+      resolve(124);
+    }, 240_000);
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      resolve(code ?? 1);
+    });
+    child.on('error', () => {
+      clearTimeout(timer);
+      resolve(1);
+    });
+  });
+
+  const steps = [];
+  for (const raw of out.split('\n')) {
+    const m = /^PREFLIGHT (ok|fail) ([^:]+): (.*)$/.exec(raw.trim());
+    if (m) steps.push({ ok: m[1] === 'ok', name: m[2], detail: m[3] });
+  }
+  const failed = steps.filter((s) => !s.ok).map((s) => `${s.name}: ${s.detail}`);
+  return {
+    ok: steps.length > 0 && failed.length === 0 && exitCode === 0,
+    steps,
+    failed: failed.length ? failed : exitCode !== 0 && steps.length === 0 ? ['preflight did not run (no checks reported)'] : [],
+    exitCode,
+    log: out.slice(-4000),
+  };
+}
+
+// A start request is not a run yet: it awaits the workbook, the mapping and the preflight before it is
+// registered. Without this flag two requests (two dashboard tabs, or a double click) both pass the
+// `activeRunId` check and spawn two Playwright runs over the same sheets.
+let startingRun = false;
+
+async function startRun({ target, path, headed, speed = 'watch', shards = 1, preflight = false }) {
+  if (activeRunId || startingRun) {
+    throw new HttpError(409, 'A run is already starting or in progress. Stop it or wait for it to finish.');
+  }
+  startingRun = true;
+  try {
+    return await startRunLocked({ target, path, headed, speed, shards, preflight });
+  } finally {
+    startingRun = false;
+  }
+}
+
+async function startRunLocked({ target, path, headed, speed = 'watch', shards = 1, preflight = false }) {
   if (!['folder', 'sheet', 'workbook'].includes(target)) throw new HttpError(400, 'target must be "folder", "sheet" or "workbook"');
   const abs = safePath(path);
   if (!existsSync(abs)) throw new HttpError(404, `${path} does not exist`);
@@ -550,8 +682,21 @@ async function startRun({ target, path, headed }) {
     };
   }
 
+  const slowMo = SPEEDS[speed] ?? SPEEDS.watch;
+  // Shards only make sense for a workbook (a named test): they all append to that one workbook.
+  // Capped at 2: three headed browsers saturate a laptop and slow every sheet down.
+  const requestedShards = Math.floor(Number(shards) || 1);
+  const shardCount =
+    target === 'workbook' ? Math.min(Math.max(requestedShards, 1), 2, Math.max(1, workbook.sheets.length)) : 1;
+
+  // Refuse to start a long run that cannot work; the message says which check failed.
+  if (preflight) {
+    const check = await runPreflight({ headed: Boolean(headed), speed });
+    if (!check.ok) throw new HttpError(400, `Preflight failed — ${check.failed.join('; ') || 'no checks reported'}`);
+  }
+
   const cfg = await mapping();
-  const env = { ...process.env, SLOW_MO: String(process.env.SLOW_MO ?? 150) };
+  const env = { ...process.env, SLOW_MO: String(slowMo) };
   delete env.REPLAY_DIR;
   delete env.REPLAY_FILE;
   delete env.REPLAY_LIST;
@@ -563,8 +708,8 @@ async function startRun({ target, path, headed }) {
     const listFile = join(DATA, '.replay-list.json');
     await writeJson(listFile, { name: workbook.name, sheets: workbook.sheets });
     env.REPLAY_LIST = listFile;
-    // The app workbook is named after the test, not a timestamp.
-    env.WORKBOOK_NAME = workbook.name;
+    // The app workbook is named after the test plus when it ran, so each run gets its own workbook.
+    env.WORKBOOK_NAME = `${workbook.name} ${runStamp()}`;
   }
 
   // Expected outputs: one default folder, plus any per-sheet mapping the user saved.
@@ -574,6 +719,9 @@ async function startRun({ target, path, headed }) {
   env.SUMMARY_TOLERANCES = tolFile;
   // A sheet with no expected output is a failure, not a silent pass.
   env.REQUIRE_EXPECTED = '1';
+  delete env.REPLAY_SHARD_COUNT;
+  delete env.REPLAY_SHARD_INDEX;
+  delete env.WORKBOOK_CREATE;
   const targets =
     target === 'folder'
       ? Object.keys(cfg.outputs).filter((input) => dirname(input) === path)
@@ -592,8 +740,12 @@ async function startRun({ target, path, headed }) {
     target,
     path,
     name: workbook?.name ?? null,
+    // The workbook the app will hold this run in (test name + time); null for other targets.
+    appWorkbook: env.WORKBOOK_NAME ?? null,
     tolerance: cfg.tolerance,
     headed: Boolean(headed),
+    speed,
+    shards: shardCount,
     status: 'running',
     startedAt: Date.now(),
     finishedAt: null,
@@ -607,7 +759,10 @@ async function startRun({ target, path, headed }) {
     sheetPaths: workbook ? workbook.sheets.map((entry) => entry.path) : target === 'sheet' ? [path] : [],
     log: '',
     buffer: '',
-    child: null,
+    children: [],
+    // Shards are not all launched at once: shard 1 creates the workbook first and the rest follow,
+    // so this counts the browsers actually alive rather than the planned shard count.
+    pending: 0,
     stopRequested: false,
   };
   runs.set(id, run);
@@ -622,9 +777,6 @@ async function startRun({ target, path, headed }) {
     '--workers=1',
     '--reporter=list',
   ];
-  const child = spawn('npx', args, { cwd: ROOT, env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
-  run.child = child;
-
   const onChunk = (chunk) => {
     const text = chunk.toString();
     run.log += text;
@@ -642,8 +794,6 @@ async function startRun({ target, path, headed }) {
       }
     }
   };
-  child.stdout.on('data', onChunk);
-  child.stderr.on('data', onChunk);
 
   const finish = async (code) => {
     // A killed run is 'stopping' and must still be settled: log written, history saved.
@@ -658,21 +808,90 @@ async function startRun({ target, path, headed }) {
     activeRunId = null;
     await mkdir(LOG_DIR, { recursive: true });
     await writeFile(join(LOG_DIR, `${id}.log`), run.log, 'utf8').catch(() => {});
+    // Kept per run: test-results is cleared by the next run, so without this the evidence is gone.
+    await collectArtifacts(id, run.startedAt).catch(() => {});
     await saveHistory();
     try {
       store.recordRun(run);
     } catch (err) {
       run.notes.push(`history not saved: ${err.message}`);
     }
+    // Last and unawaited: the run is already recorded, so a slow or failing model cannot change
+    // what the run's result says.
+    if (aiConfig().ready) void generateSummary(run, { force: true }).catch(() => {});
   };
 
-  child.on('close', (code) => void finish(code ?? 1));
-  child.on('error', async (err) => {
-    run.notes.push(`Could not start Playwright: ${err.message}`);
-    await finish(1);
-  });
+  // One browser per shard; the run settles when the last of them exits. Every shard but the first is
+  // launched only after the workbook exists: the app fetches its workbook list once, when the page
+  // loads, so a browser opened before the workbook was created can never see it and cannot join.
+  let spawnsDone = shardCount <= 1;
+
+  const startShard = (shard) => {
+    const childEnv = { ...env };
+    if (shardCount > 1) {
+      childEnv.REPLAY_SHARD_INDEX = String(shard);
+      childEnv.REPLAY_SHARD_COUNT = String(shardCount);
+      // Only the first shard creates the workbook; the rest open the one it made.
+      childEnv.WORKBOOK_CREATE = shard === 0 ? '1' : '0';
+    }
+    const child = spawn('npx', args, { cwd: ROOT, env: childEnv, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    run.children.push(child);
+    run.pending += 1;
+    child.stdout.on('data', onChunk);
+    child.stderr.on('data', onChunk);
+    let settled = false;
+    const done = (code) => {
+      if (settled) return;
+      settled = true;
+      if (code) run.exitCode = code;
+      run.pending -= 1;
+      if (run.pending <= 0 && spawnsDone) void finish(run.exitCode ?? 0);
+    };
+    child.on('close', (code) => done(code ?? 1));
+    child.on('error', (err) => {
+      run.notes.push(`Could not start Playwright: ${err.message}`);
+      done(1);
+    });
+    return child;
+  };
+
+  const first = startShard(0);
+  if (shardCount > 1) {
+    const created = await waitForLogMarker(first, `--- workbook created: ${env.WORKBOOK_NAME}`, 600_000);
+    if (created && !run.stopRequested) {
+      for (let shard = 1; shard < shardCount; shard++) startShard(shard);
+    } else if (!run.stopRequested) {
+      run.notes.push('Shard 1 did not create the workbook, so the other shards were not started.');
+    }
+    spawnsDone = true;
+    // Shard 1 can finish before the others were launched; settle a run that has nothing left alive.
+    if (run.pending <= 0) void finish(run.exitCode ?? 0);
+  }
 
   return id;
+}
+
+/**
+ * Resolves true as soon as the child prints `marker`, false if it exits first or the wait times out.
+ * The listener is attached in the caller's tick, right after spawn, so early output is not missed.
+ */
+function waitForLogMarker(child, marker, timeoutMs) {
+  return new Promise((resolve) => {
+    let done = false;
+    const finishWait = (value) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      child.stdout.off('data', onData);
+      resolve(value);
+    };
+    const onData = (chunk) => {
+      if (chunk.toString().includes(marker)) finishWait(true);
+    };
+    const timer = setTimeout(() => finishWait(false), timeoutMs);
+    child.stdout.on('data', onData);
+    child.on('close', () => finishWait(false));
+  });
 }
 
 /**
@@ -689,15 +908,17 @@ function stopRun(id) {
   run.status = 'stopping';
 
   const kill = (signal) => {
-    const pid = run.child?.pid;
-    if (!pid) return;
-    try {
-      process.kill(-pid, signal); // the child leads its own group, so this takes Chrome with it
-    } catch {
+    for (const child of run.children ?? []) {
+      const pid = child.pid;
+      if (!pid) continue;
       try {
-        run.child.kill(signal);
+        process.kill(-pid, signal); // each child leads its own group, so this takes its Chrome too
       } catch {
-        /* already gone */
+        try {
+          child.kill(signal);
+        } catch {
+          /* already gone */
+        }
       }
     }
   };
@@ -846,6 +1067,216 @@ async function serveStatic(res, urlPath) {
   send(res, 200, await readFile(abs), CONTENT_TYPES[extname(abs)] ?? 'application/octet-stream');
 }
 
+const ARTIFACT_TYPES = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webm': 'video/webm',
+  '.zip': 'application/zip',
+};
+
+/** Every file a run left behind, newest first, with the URL the dashboard can show it from. */
+async function listArtifacts(id) {
+  if (!/^[A-Za-z0-9-]{8,64}$/.test(id)) return [];
+  const root = join(ARTIFACT_DIR, id);
+  const out = [];
+  const walk = async (dir, prefix) => {
+    for (const entry of await readdir(dir, { withFileTypes: true }).catch(() => [])) {
+      const abs = join(dir, entry.name);
+      const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        await walk(abs, rel);
+        continue;
+      }
+      const info = await stat(abs).catch(() => null);
+      if (!info?.isFile()) continue;
+      const ext = extname(entry.name).toLowerCase();
+      out.push({
+        name: rel,
+        file: entry.name,
+        kind: ext === '.webm' ? 'video' : ext === '.zip' ? 'trace' : 'image',
+        size: info.size,
+        url: `/artifacts/${id}/${rel.split('/').map(encodeURIComponent).join('/')}`,
+      });
+    }
+  };
+  await walk(root, '');
+  return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Copies this run's screenshots and recordings out of test-results before the next run replaces them. */
+async function collectArtifacts(id, since) {
+  const src = join(ROOT, 'test-results');
+  const dest = join(ARTIFACT_DIR, id);
+  await mkdir(dest, { recursive: true });
+  let copied = 0;
+  const walk = async (dir, prefix) => {
+    for (const entry of await readdir(dir, { withFileTypes: true }).catch(() => [])) {
+      const abs = join(dir, entry.name);
+      const rel = prefix ? join(prefix, entry.name) : entry.name;
+      if (entry.isDirectory()) {
+        await walk(abs, rel);
+        continue;
+      }
+      if (!ARTIFACT_TYPES[extname(entry.name).toLowerCase()]) continue;
+      const info = await stat(abs).catch(() => null);
+      // Only files this run wrote: test-results can still hold an earlier attempt's leftovers.
+      if (!info?.isFile() || info.mtimeMs < since) continue;
+      const target = join(dest, rel);
+      await mkdir(dirname(target), { recursive: true }).catch(() => {});
+      await copyFile(abs, target).then(() => {
+        copied += 1;
+      }).catch(() => {});
+    }
+  };
+  await walk(src, '');
+  await pruneArtifacts();
+  return copied;
+}
+
+/** Keeps the newest few runs' artifacts; videos are megabytes each. */
+async function pruneArtifacts() {
+  const entries = await readdir(ARTIFACT_DIR, { withFileTypes: true }).catch(() => []);
+  const dirs = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const info = await stat(join(ARTIFACT_DIR, entry.name)).catch(() => null);
+    dirs.push({ name: entry.name, at: info?.mtimeMs ?? 0 });
+  }
+  dirs.sort((a, b) => b.at - a.at);
+  for (const old of dirs.slice(KEEP_ARTIFACT_RUNS)) {
+    await rm(join(ARTIFACT_DIR, old.name), { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+/**
+ * The summariser endpoint, from the environment only. The key stays here: the dashboard receives
+ * `ready` and the model name, never the key itself. Any OpenAI-compatible endpoint works, so a
+ * provider can be swapped by changing env vars, without touching this file.
+ */
+function aiConfig() {
+  const key = process.env.AI_API_KEY || process.env.GROQ_API_KEY || '';
+  const groqOnly = !process.env.AI_API_KEY && Boolean(process.env.GROQ_API_KEY);
+  const base = (process.env.AI_BASE_URL || (groqOnly ? 'https://api.groq.com/openai/v1' : '')).replace(/\/+$/, '');
+  const model = process.env.AI_MODEL || '';
+  const timeoutMs = Math.max(2000, Number(process.env.AI_TIMEOUT_MS ?? 20_000) || 20_000);
+  return { key, base, model, timeoutMs, ready: Boolean(key && base && model) };
+}
+
+async function readSummary(id) {
+  if (!/^[A-Za-z0-9-]{8,64}$/.test(id)) return null;
+  return readJson(join(SUMMARY_DIR, `${id}.json`), null);
+}
+
+async function writeSummary(id, summary) {
+  await mkdir(SUMMARY_DIR, { recursive: true });
+  await writeJson(join(SUMMARY_DIR, `${id}.json`), summary);
+}
+
+/**
+ * Turns one run into a short summary. Called after the run is already settled, so every failure here
+ * is written to a summary file and reported in the UI; it never touches the run's status or log.
+ */
+async function generateSummary(run, { force = false } = {}) {
+  const cfg = aiConfig();
+  if (!cfg.ready) {
+    throw new HttpError(
+      400,
+      'AI summary is off: set AI_API_KEY (or GROQ_API_KEY), AI_BASE_URL and AI_MODEL in .env, then restart the dashboard.',
+    );
+  }
+  if (!force) {
+    const existing = await readSummary(run.id);
+    if (existing?.text) return existing;
+  }
+  const digest = buildDigest(run);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), cfg.timeoutMs);
+  try {
+    const groqGptOss = cfg.base.includes('api.groq.com') && /^openai\/gpt-oss-(20b|120b)$/.test(cfg.model);
+    const res = await fetch(`${cfg.base}/chat/completions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${cfg.key}` },
+      body: JSON.stringify({
+        model: cfg.model,
+        temperature: 0.2,
+        ...(groqGptOss
+          ? { max_completion_tokens: 1000, reasoning_effort: 'low', reasoning_format: 'hidden' }
+          : { max_tokens: 400 }),
+        messages: [
+          { role: 'system', content: SUMMARY_SYSTEM_PROMPT },
+          { role: 'user', content: digest },
+        ],
+      }),
+      signal: controller.signal,
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(`${res.status} ${body?.error?.message ?? 'request failed'}`.slice(0, 200));
+    const choice = body?.choices?.[0];
+    const text = String(choice?.message?.content ?? '').trim();
+    if (!text) {
+      const finish = choice?.finish_reason ? ` (finish reason: ${choice.finish_reason})` : '';
+      throw new Error(`the model returned an empty summary${finish}`);
+    }
+    const summary = { id: run.id, text, model: cfg.model, at: Date.now(), digestLength: digest.length };
+    await writeSummary(run.id, summary);
+    return summary;
+  } catch (err) {
+    const message = err?.name === 'AbortError' ? `no answer within ${cfg.timeoutMs / 1000}s` : err.message;
+    const summary = { id: run.id, text: '', error: String(message).slice(0, 300), model: cfg.model, at: Date.now() };
+    await writeSummary(run.id, summary).catch(() => {});
+    return summary;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** History entries keep no log in memory, so the digest reads the saved log file back. */
+async function withLog(run) {
+  if (run.log) return run;
+  const log = await readFile(join(LOG_DIR, `${run.id}.log`), 'utf8').catch(() => '');
+  return { ...run, log };
+}
+
+/** Serves one stored screenshot or recording, with range support so a video can be scrubbed. */
+async function serveArtifact(res, urlPath, req) {
+  const rel = decodeURIComponent(urlPath.replace(/^\/artifacts\//, ''));
+  const [id, ...rest] = rel.split('/');
+  const root = join(ARTIFACT_DIR, id ?? '');
+  const abs = resolve(root, ...rest);
+  if (!/^[A-Za-z0-9-]{8,64}$/.test(id ?? '') || rest.length === 0 || !abs.startsWith(root + sep)) {
+    return send(res, 404, { error: 'Not found' });
+  }
+  const info = await stat(abs).catch(() => null);
+  if (!info?.isFile()) return send(res, 404, { error: 'Not found' });
+  const type = ARTIFACT_TYPES[extname(abs).toLowerCase()] ?? 'application/octet-stream';
+  const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? '');
+  if (range) {
+    const start = range[1] ? Number(range[1]) : 0;
+    const end = range[2] ? Math.min(Number(range[2]), info.size - 1) : info.size - 1;
+    if (start >= info.size || end < start) {
+      res.writeHead(416, { 'content-range': `bytes */${info.size}` });
+      res.end();
+      return undefined;
+    }
+    res.writeHead(206, {
+      'content-type': type,
+      'content-length': end - start + 1,
+      'content-range': `bytes ${start}-${end}/${info.size}`,
+      'accept-ranges': 'bytes',
+      'cache-control': 'no-store',
+    });
+    return createReadStream(abs, { start, end }).pipe(res);
+  }
+  res.writeHead(200, {
+    'content-type': type,
+    'content-length': info.size,
+    'accept-ranges': 'bytes',
+    'cache-control': 'no-store',
+  });
+  return createReadStream(abs).pipe(res);
+}
+
 async function state() {
   const cfg = await mapping();
   const folders = await listFolders();
@@ -856,6 +1287,7 @@ async function state() {
     workbooks: await listWorkbooks(),
     mapping: cfg,
     expected: await expectedFiles(),
+    ai: { configured: aiConfig().ready, model: aiConfig().model || null },
     activeRun: active ? publicRun(active) : null,
     history,
     notes: store.allNotes(),
@@ -869,6 +1301,36 @@ const server = createServer(async (req, res) => {
   try {
     if (req.method === 'GET' && (path === '/' || path.endsWith('.js') || path.endsWith('.css') || path.endsWith('.html'))) {
       return await serveStatic(res, path);
+    }
+
+    if (req.method === 'GET' && path.startsWith('/artifacts/')) return await serveArtifact(res, path, req);
+
+    if (req.method === 'GET' && path === '/api/artifacts') {
+      const id = String(url.searchParams.get('id') ?? '');
+      return send(res, 200, { files: await listArtifacts(id) });
+    }
+
+    if (req.method === 'GET' && path === '/api/ai') {
+      const cfg = aiConfig();
+      return send(res, 200, { configured: cfg.ready, model: cfg.model || null });
+    }
+
+    if (req.method === 'GET' && path === '/api/summary') {
+      const id = String(url.searchParams.get('id') ?? '');
+      return send(res, 200, { summary: await readSummary(id) });
+    }
+
+    if (req.method === 'POST' && path === '/api/summary') {
+      const body = await readBody(req);
+      const id = String(body.id ?? '');
+      const live = runs.get(id);
+      const entry = live ?? history.find((h) => h.id === id) ?? null;
+      if (!entry) throw new HttpError(404, 'Unknown run');
+      if (entry.status === 'running' || entry.status === 'stopping') {
+        throw new HttpError(409, 'That run is still going — summarise it when it finishes.');
+      }
+      const summary = await generateSummary(await withLog(entry), { force: true });
+      return send(res, 200, { summary });
     }
 
     if (req.method === 'GET' && path === '/api/state') return send(res, 200, await state());
@@ -1022,11 +1484,12 @@ const server = createServer(async (req, res) => {
       return send(res, 200, { ok: true, note });
     }
 
-    // Run history for one workbook: every run, plus which sheets keep failing.
+    // Run history for one workbook: every run, which sheets keep failing, and which fields keep failing.
     if (req.method === 'GET' && path === '/api/workbook-history') {
       const workbook = String(url.searchParams.get('workbook') ?? '').trim();
       if (!workbook) throw new HttpError(400, 'A workbook name is required');
-      return send(res, 200, store.workbookHistory(workbook));
+      const fields = store.fieldHistory(workbook);
+      return send(res, 200, { ...store.workbookHistory(workbook), fields: fields.fields });
     }
 
     if (req.method === 'POST' && path === '/api/workbooks') {
@@ -1079,8 +1542,20 @@ const server = createServer(async (req, res) => {
 
     if (req.method === 'POST' && path === '/api/run') {
       const body = await readBody(req);
-      const id = await startRun({ target: body.target, path: body.path, headed: body.headed });
+      const id = await startRun({
+        target: body.target,
+        path: body.path,
+        headed: body.headed,
+        speed: body.speed,
+        shards: body.shards,
+        preflight: body.preflight !== false,
+      });
       return send(res, 200, { id });
+    }
+
+    if (req.method === 'POST' && path === '/api/preflight') {
+      const body = await readBody(req);
+      return send(res, 200, await runPreflight({ headed: body.headed !== false, speed: body.speed ?? 'normal' }));
     }
 
     if (req.method === 'POST' && path === '/api/run/stop') {

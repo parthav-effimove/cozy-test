@@ -1,0 +1,382 @@
+{
+  "vessel": {
+    "gt": 23375,
+    "dwt": 42500,
+    "imo": "",
+    "name": "",
+    "type": "",
+    "cubic": 0,
+    "draft": 0,
+    "tpcTpi": 0,
+    "cubicUnit": "cbm",
+    "consumption": {
+      "ae": {
+        "canal": 0.32,
+        "ecoLaden": 0.19,
+        "ecoBallast": 0.18
+      },
+      "hsfo": {
+        "canal": 0,
+        "ecoLaden": 0,
+        "ecoBallast": 0
+      },
+      "lsmgo": {
+        "canal": 4.47,
+        "ecoLaden": 26.34,
+        "ecoBallast": 27.04
+      },
+      "speed": {
+        "canal": 0,
+        "ecoLaden": 12.5,
+        "ecoBallast": 12
+      },
+      "vlsfo": {
+        "canal": 4.81,
+        "ecoLaden": 35.86,
+        "ecoBallast": 32.74
+      },
+      "aeScrubber": {
+        "canal": 0,
+        "ecoLaden": 0,
+        "ecoBallast": 0
+      }
+    },
+    "hasScrubber": false,
+    "speedProfile": "eco",
+    "scrubberCount": 0,
+    "ecoConsumption": {
+      "ae": {
+        "idle": 0.19,
+        "load": 0.51,
+        "canal": 0.32,
+        "laden": 0.19,
+        "misc1": 0,
+        "misc2": 0,
+        "ballast": 0.18,
+        "discharge": 0.45
+      },
+      "hsfo": {
+        "idle": 0,
+        "load": 0,
+        "canal": 0,
+        "laden": 0,
+        "misc1": 0,
+        "misc2": 0,
+        "ballast": 0,
+        "discharge": 0
+      },
+      "lsmgo": {
+        "idle": 3.67,
+        "load": 5.1,
+        "canal": 4.47,
+        "laden": 26.34,
+        "misc1": 0,
+        "misc2": 0,
+        "ballast": 27.04,
+        "discharge": 5.37
+      },
+      "speed": {
+        "idle": 0,
+        "load": 0,
+        "canal": 0,
+        "laden": 12.5,
+        "misc1": 0,
+        "misc2": 0,
+        "ballast": 12,
+        "discharge": 0
+      },
+      "vlsfo": {
+        "idle": 3.88,
+        "load": 5.16,
+        "canal": 4.81,
+        "laden": 35.86,
+        "misc1": 0,
+        "misc2": 0,
+        "ballast": 32.74,
+        "discharge": 5.58
+      },
+      "aeScrubber": {
+        "idle": 0,
+        "load": 0,
+        "canal": 0,
+        "laden": 0,
+        "misc1": 0,
+        "misc2": 0,
+        "ballast": 0,
+        "discharge": 0
+      }
+    },
+    "hsfoCapability": false,
+    "miscMultiplier": 0,
+    "fullConsumption": {
+      "ae": {
+        "idle": 0,
+        "load": 0,
+        "canal": 0,
+        "laden": 0,
+        "misc1": 0,
+        "misc2": 0,
+        "ballast": 0,
+        "discharge": 0
+      },
+      "hsfo": {
+        "idle": 0,
+        "load": 0,
+        "canal": 0,
+        "laden": 0,
+        "misc1": 0,
+        "misc2": 0,
+        "ballast": 0,
+        "discharge": 0
+      },
+      "lsmgo": {
+        "idle": 0,
+        "load": 0,
+        "canal": 0,
+        "laden": 0,
+        "misc1": 0,
+        "misc2": 0,
+        "ballast": 0,
+        "discharge": 0
+      },
+      "speed": {
+        "idle": 0,
+        "load": 0,
+        "canal": 0,
+        "laden": 0,
+        "misc1": 0,
+        "misc2": 0,
+        "ballast": 0,
+        "discharge": 0
+      },
+      "vlsfo": {
+        "idle": 0,
+        "load": 0,
+        "canal": 0,
+        "laden": 0,
+        "misc1": 0,
+        "misc2": 0,
+        "ballast": 0,
+        "discharge": 0
+      },
+      "aeScrubber": {
+        "idle": 0,
+        "load": 0,
+        "canal": 0,
+        "laden": 0,
+        "misc1": 0,
+        "misc2": 0,
+        "ballast": 0,
+        "discharge": 0
+      }
+    },
+    "loadDischIdleSame": false
+  },
+  "sequence": [
+    {
+      "id": 1,
+      "port": "Paradip Port",
+      "type": "open",
+      "draft": 0,
+      "expDa": 0,
+      "terms": "",
+      "ukEts": false,
+      "cranes": 0,
+      "portId": 51946,
+      "season": "summer",
+      "ukZone": null,
+      "ecaTime": 0,
+      "isEuEea": false,
+      "seaTime": 0,
+      "distance": 0,
+      "quantity": 0,
+      "turnTime": 0,
+      "extraTime": 0,
+      "portUnloc": "INPPT",
+      "seaMargin": 0,
+      "wdaysUnit": "VL",
+      "ukcPercent": 0,
+      "baseSeaTime": 0,
+      "coordinates": [
+        86.58334,
+        20.25
+      ],
+      "ecaDistance": 0,
+      "portCountry": "india",
+      "portFuelType": "vlsfo",
+      "portMaxDraft": 0,
+      "productivity": 0,
+      "totalLegTime": 0,
+      "bunkeringHsfo": 0,
+      "seaMarginTime": 0,
+      "stowageFactor": 0,
+      "bunkeringLsmgo": 0,
+      "bunkeringVlsfo": 0,
+      "customTermsName": "",
+      "legDepartureUtc": "2026-10-01T07:00",
+      "coefficientFactor": 0,
+      "calculatedPortDays": 0,
+      "distanceSpeedContext": "EV",
+      "ecaDistanceSpeedContext": "EL"
+    },
+    {
+      "id": 2,
+      "port": "Rotterdam",
+      "type": "port",
+      "draft": 0,
+      "expDa": 30679,
+      "terms": "shinc",
+      "ukEts": false,
+      "cranes": 4,
+      "portId": 50024,
+      "ukZone": null,
+      "ecaTime": 0.18523958333333332,
+      "isEuEea": true,
+      "layTime": 24,
+      "seaTime": 3.4536493055555555,
+      "distance": 994.651,
+      "quantity": 82100,
+      "turnTime": 12,
+      "extraTime": 11,
+      "operation": "loading",
+      "portUnloc": "NLRTM",
+      "seaMargin": 0,
+      "wdaysUnit": "VL",
+      "ukcPercent": 0,
+      "baseSeaTime": 3.638888888888889,
+      "coordinates": [
+        4.5,
+        51.91667
+      ],
+      "ecaDistance": 53.349,
+      "portCountry": "netherlands",
+      "portFuelType": "vlsfo",
+      "portMaxDraft": 0,
+      "productivity": 14037.57395222783,
+      "totalLegTime": 3.638888888888889,
+      "bunkeringHsfo": 0,
+      "legArrivalUtc": "2026-10-04T22:20",
+      "seaMarginTime": 0,
+      "stowageFactor": 0,
+      "bunkeringLsmgo": 0,
+      "bunkeringVlsfo": 0,
+      "customTermsName": "",
+      "legDepartureUtc": "2026-10-01T07:00",
+      "coefficientFactor": 1,
+      "calculatedPortDays": 6.806922290328308,
+      "distanceSpeedContext": "EV",
+      "ecaDistanceSpeedContext": "EL"
+    },
+    {
+      "id": 3,
+      "port": "Antwerpen",
+      "type": "port",
+      "draft": 0,
+      "expDa": 21546,
+      "terms": "shinc",
+      "ukEts": false,
+      "cranes": 4,
+      "portId": 48925,
+      "ukZone": null,
+      "ecaTime": 1.6551966666666666,
+      "isEuEea": true,
+      "layTime": 24,
+      "seaTime": 4.55147,
+      "distance": 1365.441,
+      "quantity": 82100,
+      "turnTime": 18,
+      "extraTime": 0,
+      "operation": "discharging",
+      "portUnloc": "BEANR",
+      "seaMargin": 0,
+      "wdaysUnit": "VL",
+      "ukcPercent": 0,
+      "baseSeaTime": 6.206666666666667,
+      "coordinates": [
+        4.41667,
+        51.21667
+      ],
+      "ecaDistance": 496.559,
+      "portCountry": "belgium",
+      "portFuelType": "vlsfo",
+      "portMaxDraft": 0,
+      "productivity": 16395.670296624303,
+      "totalLegTime": 6.206666666666667,
+      "bunkeringHsfo": 0,
+      "legArrivalUtc": "2026-10-17T22:39",
+      "seaMarginTime": 0,
+      "stowageFactor": 0,
+      "bunkeringLsmgo": 0,
+      "bunkeringVlsfo": 0,
+      "customTermsName": "",
+      "legDepartureUtc": "2026-10-11T17:41",
+      "coefficientFactor": 1,
+      "calculatedPortDays": 5.757419551300902,
+      "distanceSpeedContext": "EV",
+      "ecaDistanceSpeedContext": "EL"
+    }
+  ],
+  "cargos": [
+    {
+      "id": 1,
+      "rate": 186.51,
+      "ntcBase": 8000,
+      "quantity": 0,
+      "rateType": "mt",
+      "gtcTarget": 12000,
+      "worldscale": 100,
+      "averageMode": "average",
+      "despatchRate": 0,
+      "tcCommission": 2.16,
+      "demurrageRate": 0,
+      "stowageFactor": 1.4,
+      "despatchAmount": 0,
+      "demurrageAmount": 0,
+      "voyageCommission": 4.27
+    }
+  ],
+  "bunker": {
+    "hsfo": {
+      "price": 887.41,
+      "robStart": 1486
+    },
+    "lsmgo": {
+      "price": 1447.18,
+      "robStart": 1159
+    },
+    "vlsfo": {
+      "price": 1079.73,
+      "robStart": 2882
+    },
+    "fuelMode": "average",
+    "euEtsHsfo": 0,
+    "ignoreBOB": false,
+    "euEtsLsmgo": 0,
+    "euEtsPrice": 0,
+    "euEtsVlsfo": 0,
+    "ukEtsPrice": 0,
+    "rewardFactor": 1,
+    "portBunkering": []
+  },
+  "misc": {
+    "miscCost": 0,
+    "extraFees": 0,
+    "extraInsurance": 0,
+    "canalCost1": 319975,
+    "canalFuel": "vlsfo",
+    "extraTime": {
+      "canal1": {
+        "mode": "VL",
+        "value": 0,
+        "unit": "days"
+      }
+    }
+  },
+  "hireRate": 40416,
+  "vesselCost": 40416,
+  "gtc": 41308.26,
+  "ntc": 40416,
+  "tcCommission": 2.16,
+  "netBB": 0,
+  "grossBB": 0
+}

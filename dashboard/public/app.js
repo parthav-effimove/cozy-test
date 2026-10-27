@@ -5,7 +5,7 @@ const state = {
   mapping: {
     defaultOutputDir: 'sheets/ballast-op',
     outputs: {},
-    tolerance: { amount: 0.5, rate: 0.01, fields: {} },
+    tolerance: { amount: 0.5, rate: 0.01, fields: {}, skip: {} },
     fields: [],
   },
   activeRun: null,
@@ -22,6 +22,8 @@ const state = {
   editor: null,
   polling: false,
   hydrated: false,
+  // Whether the server has a summariser endpoint configured; the key itself never reaches here.
+  ai: null,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -92,6 +94,7 @@ async function refresh() {
     state.history = data.history ?? [];
     state.workbooks = data.workbooks ?? [];
     state.notes = data.notes ?? {};
+    state.ai = data.ai ?? null;
     if (!state.selected || !inputFolders().some((f) => f.path === state.selected)) {
       state.selected = inputFolders()[0]?.path ?? null;
     }
@@ -278,22 +281,28 @@ function statusTag(path, index) {
 }
 
 let mappingTimer = null;
-async function persistMapping(note = 'Saved') {
+// Saves are queued: two quick edits (untick one field, untick the next) otherwise race and the slower
+// request wins, leaving the file with the older settings.
+let mappingSave = Promise.resolve();
+function persistMapping(note = 'Saved') {
   clearTimeout(mappingTimer);
-  try {
-    await api('/api/mapping', {
-      method: 'POST',
-      body: JSON.stringify({
-        defaultOutputDir: state.mapping.defaultOutputDir,
-        outputs: state.mapping.outputs,
-        tolerance: state.mapping.tolerance,
-      }),
-    });
-    const el = $('mappingState');
-    if (el) el.textContent = `${note} · ${new Date().toLocaleTimeString()}`;
-  } catch (err) {
-    toast(err.message, 'bad');
-  }
+  mappingSave = mappingSave.then(async () => {
+    try {
+      await api('/api/mapping', {
+        method: 'POST',
+        body: JSON.stringify({
+          defaultOutputDir: state.mapping.defaultOutputDir,
+          outputs: state.mapping.outputs,
+          tolerance: state.mapping.tolerance,
+        }),
+      });
+      const el = $('mappingState');
+      if (el) el.textContent = `${note} · ${new Date().toLocaleTimeString()}`;
+    } catch (err) {
+      toast(err.message, 'bad');
+    }
+  });
+  return mappingSave;
 }
 
 function renderMapping() {
@@ -429,7 +438,7 @@ $('onlyUnmapped').addEventListener('change', renderMapping);
 
 /** The two group defaults: amounts (currency totals) and rates/quantities. */
 function renderToleranceGroups() {
-  state.mapping.tolerance ??= { amount: 0.5, rate: 0.01, fields: {} };
+  state.mapping.tolerance ??= { amount: 0.5, rate: 0.01, fields: {}, skip: {} };
   state.mapping.tolerance.fields ??= {};
   const tolerance = state.mapping.tolerance;
   for (const [id, key, fallback] of [
@@ -440,10 +449,20 @@ function renderToleranceGroups() {
     if (!input) continue;
     if (document.activeElement !== input) input.value = String(tolerance[key] ?? fallback);
   }
-  const count = Object.keys(tolerance.fields ?? {}).length;
-  const badge = $('toleranceCount');
-  if (badge) badge.textContent = count ? `· ${count} field override(s)` : '· group defaults only';
+  updateToleranceBadge();
   renderToleranceFields();
+}
+
+/** The count next to the panel title; also used on its own so a tick box does not rebuild the list. */
+function updateToleranceBadge() {
+  const tolerance = state.mapping.tolerance ?? {};
+  const count = Object.keys(tolerance.fields ?? {}).length;
+  const skipped = Object.keys(tolerance.skip ?? {}).length;
+  const badge = $('toleranceCount');
+  if (!badge) return;
+  const parts = [count ? `${count} field override(s)` : 'group defaults only'];
+  if (skipped) parts.push(`${skipped} not checked`);
+  badge.textContent = `· ${parts.join(' · ')}`;
 }
 
 for (const [id, key, fallback] of [
@@ -471,11 +490,41 @@ function renderToleranceFields() {
     rows.replaceChildren(h('p', { class: 'empty', text: 'No field list available.' }));
     return;
   }
-  const tolerance = state.mapping.tolerance ?? { amount: 0.5, rate: 0.01, fields: {} };
+  const tolerance = state.mapping.tolerance ?? { amount: 0.5, rate: 0.01, fields: {}, skip: {} };
   const overrides = tolerance.fields ?? {};
+  // Fields switched off keep their entry here; every field without one is checked.
+  const skip = (tolerance.skip ??= {});
+  // Edits must land on the current settings: a poll can replace state.mapping while these rows keep
+  // focus, and a handler closing over the old object would save the wrong thing.
+  const liveTolerance = () => {
+    const live = (state.mapping.tolerance ??= { amount: 0.5, rate: 0.01, fields: {}, skip: {} });
+    live.fields ??= {};
+    live.skip ??= {};
+    return live;
+  };
   const groupDefault = (field) => (field.kind === 'money' ? tolerance.amount : tolerance.rate);
   const nodes = fields.map((field) => {
     const overridden = Object.prototype.hasOwnProperty.call(overrides, field.path);
+    const checked = !skip[field.path];
+    const toggle = h('input', {
+      type: 'checkbox',
+      class: 'tol-check',
+      checked: checked ? true : undefined,
+      title: `Check ${field.label} in every run. Turn off for values that move on their own, like bunker prices, penalties or FX rates.`,
+      onchange: (e) => {
+        const on = e.target.checked;
+        const live = liveTolerance();
+        if (on) delete live.skip[field.path];
+        else live.skip[field.path] = true;
+        e.target.closest('.tol-row')?.classList.toggle('is-off', !on);
+        const number = e.target.closest('.tol-row')?.querySelector('.tol-input');
+        if (number) number.disabled = !on;
+        // Only this row and the count change: rebuilding the whole list here would throw away the
+        // checkbox that received the click, losing a second tick made in the same moment.
+        updateToleranceBadge();
+        void persistMapping(on ? `${field.label} is checked again` : `${field.label} will not be checked`);
+      },
+    });
     const input = h('input', {
       type: 'number',
       min: '0',
@@ -483,10 +532,12 @@ function renderToleranceFields() {
       class: 'tol-input',
       placeholder: String(groupDefault(field)),
       value: overridden ? String(overrides[field.path]) : '',
+      disabled: checked ? undefined : true,
       title: `Allowed difference for ${field.label} (${field.path}). Blank = ${groupDefault(field)}.`,
       onchange: (e) => {
         const raw = e.target.value.trim();
-        if (raw === '') delete tolerance.fields[field.path];
+        const live = liveTolerance();
+        if (raw === '') delete live.fields[field.path];
         else {
           const value = Number(raw);
           if (!Number.isFinite(value) || value < 0) {
@@ -494,7 +545,7 @@ function renderToleranceFields() {
             e.target.value = overridden ? String(overrides[field.path]) : '';
             return;
           }
-          tolerance.fields[field.path] = value;
+          live.fields[field.path] = value;
         }
         renderToleranceGroups();
         void persistMapping(`${field.label} tolerance saved`);
@@ -502,10 +553,11 @@ function renderToleranceFields() {
     });
     return h(
       'div',
-      { class: `tol-row${overridden ? ' is-overridden' : ''}` },
+      { class: `tol-row${overridden ? ' is-overridden' : ''}${checked ? '' : ' is-off'}` },
       h(
         'div',
         { class: 'tol-name' },
+        toggle,
         h('span', { text: field.label }),
         h('span', { class: 'tol-kind', text: field.kind === 'text' ? 'exact text' : field.kind }),
         h('code', { class: 'tol-path', text: field.path }),
@@ -918,7 +970,7 @@ async function openHistoryDialog(wb) {
   $('historyTitle').textContent = `History · ${wb.name}`;
   $('historyStatus').textContent = 'Loading…';
   $('historyStatus').className = 'validation';
-  for (const id of ['wbSheetRows', 'wbRunRows']) $(id).replaceChildren();
+  for (const id of ['wbSheetRows', 'wbRunRows', 'wbFieldRows']) $(id).replaceChildren();
   $('historySummary').replaceChildren();
   $('historyDialog').showModal();
   let data;
@@ -931,6 +983,7 @@ async function openHistoryDialog(wb) {
   }
   const runs = data.runs ?? [];
   const sheets = data.sheets ?? [];
+  const fields = data.fields ?? [];
   const notes = notesFor(wb.name);
   // "Always fails" only means something once a sheet has been through the test more than once.
   const repeated = sheets.filter((s) => s.runs > 1);
@@ -992,6 +1045,50 @@ async function openHistoryDialog(wb) {
     );
   }
 
+  // Field roll-up: one row per field that ever differed, with the sheets it failed on.
+  const fieldRows = $('wbFieldRows');
+  $('wbFieldEmpty').hidden = fields.length > 0;
+  for (const field of fields.slice(0, 40)) {
+    const share = field.totalRuns ? `${field.runs}/${field.totalRuns} runs` : `${field.runs} run(s)`;
+    fieldRows.append(
+      h(
+        'tr',
+        {},
+        h(
+          'td',
+          {},
+          h(
+            'div',
+            { class: 'cell-name' },
+            h('span', { class: 'row-title', text: field.field }),
+            field.runs > 1 && field.runs === field.totalRuns ? h('span', { class: 'tag tag-bad', text: 'every run' }) : null,
+          ),
+        ),
+        h('td', { class: `num ${field.runs ? 'is-bad' : ''}`, text: share }),
+        h('td', { class: 'num', text: String(field.failures) }),
+        h(
+          'td',
+          { class: 'muted small', text: field.sheets.map((path) => wbBase(path)).join(', ') || '—' },
+        ),
+        h(
+          'td',
+          { class: 'muted small', text: field.last ? `wanted ${field.last.expected || '—'}, got ${field.last.actual || '—'}` : '—' },
+        ),
+        h(
+          'td',
+          { class: 'right' },
+          h('button', {
+            class: 'btn btn-sm',
+            text: 'Note all sheets',
+            disabled: field.sheets.length === 0,
+            title: 'Write one comment onto every sheet this field failed on',
+            onclick: () => void noteFieldSheets(wb, field),
+          }),
+        ),
+      ),
+    );
+  }
+
   const runRows = $('wbRunRows');
   $('wbRunEmpty').hidden = runs.length > 0;
   for (const run of runs) {
@@ -1013,6 +1110,12 @@ async function openHistoryDialog(wb) {
             { class: 'cell-actions' },
             h('button', {
               class: 'btn btn-sm',
+              text: 'Screenshots',
+              title: 'Screenshots and recordings this run kept',
+              onclick: () => void openArtifacts(run),
+            }),
+            h('button', {
+              class: 'btn btn-sm',
               text: 'Open',
               onclick: () => {
                 const known = (state.history ?? []).find((h) => h.id === run.id);
@@ -1031,6 +1134,26 @@ async function openHistoryDialog(wb) {
     );
   }
   $('historyStatus').textContent = `${runs.length} run(s) shown`;
+}
+
+/** One comment onto every sheet a field failed on, so the cause is recorded where it shows up. */
+async function noteFieldSheets(wb, field) {
+  const example = field.last ? ` (last: wanted ${field.last.expected || '—'}, got ${field.last.actual || '—'})` : '';
+  const comment = prompt(`Note for ${field.sheets.length} sheet(s) where ${field.field} failed${example}`, `${field.field} differs on this sheet`);
+  if (!comment) return;
+  try {
+    for (const sheetPath of field.sheets) {
+      await api('/api/notes', {
+        method: 'POST',
+        body: JSON.stringify({ workbook: wb.name, sheetPath, comment, expectFail: true }),
+      });
+    }
+    toast(`Note saved on ${field.sheets.length} sheet(s)`, 'ok');
+    $('historyDialog').close();
+    await refresh();
+  } catch (err) {
+    toast(err.message, 'bad');
+  }
 }
 
 $('historyClose').addEventListener('click', () => $('historyDialog').close());
@@ -1093,6 +1216,27 @@ async function deleteFolder(folder) {
     toast(err.message, 'bad');
   }
 }
+
+$('preflight').addEventListener('click', async () => {
+  const btn = $('preflight');
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Checking…';
+  try {
+    const res = await api('/api/preflight', {
+      method: 'POST',
+      body: JSON.stringify({ headed: $('headed').checked, speed: $('speed').value }),
+    });
+    const lines = (res.steps ?? []).map((s) => `${s.ok ? '✓' : '✗'} ${s.name}${s.detail ? ` — ${s.detail}` : ''}`);
+    if (res.ok) toast(`Preflight passed · ${lines.length} check(s)`, 'ok');
+    else alert(`Preflight failed:\n\n${lines.join('\n') || res.failed?.join('\n') || 'no checks reported'}`);
+  } catch (err) {
+    toast(err.message, 'bad');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+});
 
 $('newFolder').addEventListener('click', async () => {
   const name = prompt('New folder name');
@@ -1247,6 +1391,12 @@ async function killRun(id) {
 $('stopRun').addEventListener('click', () => killRun(state.run?.id));
 
 async function startRun(target, path) {
+  // A second click (or a second tab) must not start a second run over the same sheets.
+  if (state.starting || state.run?.status === 'running' || state.run?.status === 'stopping') {
+    if (state.starting) toast('Starting the run…', '');
+    return;
+  }
+  state.starting = true;
   try {
     // Every sheet is validated against an output; warn before a run where some have none.
     const index = expectedIndex();
@@ -1266,8 +1416,17 @@ async function startRun(target, path) {
     }
 
     const headed = $('headed').checked;
-    const { id } = await api('/api/run', { method: 'POST', body: JSON.stringify({ target, path, headed }) });
-    state.run = { id, target, path, headed, status: 'running', sheets: [], total: null };
+    const speed = $('speed').value;
+    const shards = Number($('shards').value) || 1;
+    // Long runs are checked first; a single sheet is quick enough to just try.
+    const preflight = target !== 'sheet';
+    const { id } = await api('/api/run', { method: 'POST', body: JSON.stringify({ target, path, headed, speed, shards, preflight }) });
+    state.run = { id, target, path, headed, speed, shards, status: 'running', sheets: [], total: null };
+    // The new run owns its own screenshots and summary; do not show the previous run's.
+    state.artifactsId = null;
+    state.artifacts = [];
+    state.summaryFor = null;
+    state.summary = null;
     state.hydrated = true;
     state.logOffset = 0;
     state.logText = '';
@@ -1276,6 +1435,8 @@ async function startRun(target, path) {
     void pollRun();
   } catch (err) {
     toast(err.message, 'bad');
+  } finally {
+    state.starting = false;
   }
 }
 
@@ -1364,12 +1525,17 @@ function renderRun() {
         class: 'meta',
         text: [
           run.headed ? 'headed' : 'headless',
+          `${run.speed ?? 'watch'} speed`,
+          (run.shards ?? 1) > 1 ? `${run.shards} shards` : '',
+          run.appWorkbook ? `app workbook: ${run.appWorkbook}` : '',
           `${run.sheets.length}${run.total ? `/${run.total}` : ''} sheet(s)`,
           `${checked} field(s) checked`,
           toleranceLabel(run.tolerance),
           `${mismatches} mismatch(es)`,
           run.finishedAt ? fmtDuration(run.finishedAt - run.startedAt) : fmtDuration(Date.now() - run.startedAt),
-        ].join(' · '),
+        ]
+          .filter(Boolean)
+          .join(' · '),
       }),
     ),
     activeRun
@@ -1474,10 +1640,180 @@ function renderRun() {
     logPre,
   );
 
-  view.replaceChildren(summary, ...(errorBox ? [errorBox] : []), ...cards, logPanel);
+  const evidence = artifactStrip(run);
+  const ai = summaryCard(run);
+  view.replaceChildren(summary, ...(ai ? [ai] : []), ...(errorBox ? [errorBox] : []), ...cards, ...(evidence ? [evidence] : []), logPanel);
   const pre = $('logPre');
   if (pre) pre.scrollTop = pre.scrollHeight;
+  // Failure screenshots land in test-results and are copied per run when it finishes.
+  if (!activeRun) void loadArtifacts(run);
+  if (!activeRun) void loadSummary(run);
 }
+
+/** The post-run summary card; it explains itself when the summariser is not configured. */
+function summaryCard(run) {
+  if (run.status === 'running' || run.status === 'stopping') return null;
+  if (!state.ai?.configured) {
+    return h(
+      'div',
+      { class: 'ai-card is-off' },
+      h('strong', { text: 'AI summary off' }),
+      h('span', {
+        class: 'muted small',
+        text: 'Set AI_API_KEY (or GROQ_API_KEY), AI_BASE_URL and AI_MODEL in .env, restart the dashboard, and each finished run gets a short read of what went wrong.',
+      }),
+    );
+  }
+  const summary = state.summaryFor === run.id ? state.summary : null;
+  const generating = state.summaryBusy === run.id;
+  const body = generating
+    ? h('p', { class: 'ai-text', text: 'Summarising this run…' })
+    : summary?.text
+      ? h('pre', { class: 'ai-text', text: summary.text })
+      : h('p', { class: 'ai-text muted', text: summary?.error ? `No summary: ${summary.error}` : 'No summary yet for this run.' });
+  return h(
+    'div',
+    { class: 'ai-card' },
+    h(
+      'div',
+      { class: 'log-head' },
+      h('strong', { text: 'AI summary' }),
+      summary?.model ? h('span', { class: 'tag', text: summary.model }) : null,
+      summary?.at ? h('span', { class: 'muted small', text: fmtDate(summary.at) }) : null,
+      h('span', { style: 'flex:1' }),
+      h('button', {
+        class: 'btn btn-sm',
+        text: summary?.text ? 'Regenerate' : 'Summarise run',
+        disabled: generating,
+        onclick: () => void generateSummary(run),
+      }),
+    ),
+    body,
+    h('p', {
+      class: 'ai-note',
+      text: 'Generated from sheet numbers, field names and error lines only — no amounts are sent. A hint, not a verdict.',
+    }),
+  );
+}
+
+/** The summary is produced after the run finishes, so it may not exist yet on the first look. */
+async function loadSummary(run) {
+  if (state.summaryFor === run.id) return;
+  state.summaryFor = run.id;
+  state.summary = null;
+  try {
+    const res = await api(`/api/summary?id=${encodeURIComponent(run.id)}`);
+    if (state.summaryFor !== run.id) return;
+    state.summary = res.summary ?? null;
+  } catch {
+    state.summary = null;
+  }
+  if (state.run?.id === run.id) renderRun();
+}
+
+async function generateSummary(run) {
+  if (state.summaryBusy) return;
+  state.summaryBusy = run.id;
+  state.summaryFor = run.id;
+  if (state.run?.id === run.id) renderRun();
+  try {
+    const res = await api('/api/summary', { method: 'POST', body: JSON.stringify({ id: run.id }) });
+    if (state.summaryFor === run.id) state.summary = res.summary ?? null;
+  } catch (err) {
+    toast(err.message, 'bad');
+  } finally {
+    state.summaryBusy = null;
+    if (state.run?.id === run.id) renderRun();
+  }
+}
+
+/** Thumbnail strip for the run view: images and recordings of the sheets that failed. */
+function artifactStrip(run) {
+  // Not fetched yet (a live run has no artifacts), or this run saved none.
+  const files = state.artifactsId === run.id ? state.artifacts ?? [] : [];
+  if (!files.length) return null;
+  const grid = h('div', { class: 'artifact-grid' }, files.map((file) => h('figure', { class: 'artifact' }, artifactNode(file), h('figcaption', { text: file.name }))));
+  return h(
+    'div',
+    { class: 'run-evidence' },
+    h(
+      'div',
+      { class: 'log-head' },
+      h('strong', { text: `Screenshots & recordings (${files.length})` }),
+      h('span', { style: 'flex:1' }),
+      h('button', {
+        class: 'btn btn-sm',
+        text: 'View larger',
+        onclick: () => void openArtifacts(run),
+      }),
+    ),
+    grid,
+  );
+}
+
+function artifactNode(file, full = false) {
+  if (file.kind === 'video') {
+    return h('video', { class: `artifact-video${full ? ' is-full' : ''}`, src: file.url, controls: true, preload: 'metadata' });
+  }
+  if (file.kind === 'image') {
+    return h(
+      'a',
+      { class: 'artifact-image', href: file.url, target: '_blank', rel: 'noreferrer' },
+      h('img', { src: file.url, alt: file.name, loading: 'lazy', class: full ? 'is-full' : '' }),
+    );
+  }
+  return h('a', { class: 'artifact-file', href: file.url, download: file.file, text: file.file });
+}
+
+/** Fetches the list once per run; renderRun is called on every poll and must not refetch. */
+async function loadArtifacts(run) {
+  if (state.artifactsId === run.id) return;
+  state.artifactsId = run.id;
+  state.artifacts = [];
+  try {
+    const res = await api(`/api/artifacts?id=${encodeURIComponent(run.id)}`);
+    if (state.artifactsId !== run.id) return;
+    state.artifacts = res.files ?? [];
+  } catch {
+    state.artifacts = [];
+  }
+  if (state.run?.id === run.id) renderRun();
+}
+
+/** Every screenshot and recording the run kept, full size. */
+async function openArtifacts(run) {
+  const body = $('artifactBody');
+  $('artifactTitle').textContent = `Screenshots & recordings · ${run.name ?? run.id.slice(0, 8)}`;
+  $('artifactHint').textContent = 'Each finished run keeps its own failure screenshots and recordings, so a later run cannot replace them.';
+  $('artifactStatus').textContent = 'Loading…';
+  body.replaceChildren();
+  $('artifactDialog').showModal();
+  let files = [];
+  try {
+    files = (await api(`/api/artifacts?id=${encodeURIComponent(run.id)}`)).files ?? [];
+  } catch (err) {
+    $('artifactStatus').textContent = err.message;
+    return;
+  }
+  if (!files.length) {
+    $('artifactStatus').textContent = 'This run saved no screenshots — only failing sheets are captured.';
+    return;
+  }
+  for (const file of files) {
+    body.append(
+      h(
+        'figure',
+        { class: 'artifact' },
+        artifactNode(file, true),
+        h('figcaption', { text: `${file.name} · ${(file.size / 1048576).toFixed(1)} MB` }),
+      ),
+    );
+  }
+  $('artifactStatus').textContent = `${files.length} file(s)`;
+}
+
+$('artifactClose').addEventListener('click', () => $('artifactDialog').close());
+$('artifactDone').addEventListener('click', () => $('artifactDialog').close());
 
 const activeLabel = (run) => (run.status === 'running' || run.status === 'stopping' ? 'live' : `${run.exitCode ?? '—'} exit`);
 
@@ -1532,6 +1868,19 @@ for (const tab of document.querySelectorAll('.tab')) {
 }
 
 // ------------------------------------------------------------------ boot
+
+// Run settings survive a reload: the browser, the pace and the shard count you last used.
+for (const [key, id] of [['headed', 'headed'], ['speed', 'speed'], ['shards', 'shards']]) {
+  const el = $(id);
+  const saved = localStorage.getItem(`vc.${key}`);
+  if (saved !== null) {
+    if (el.type === 'checkbox') el.checked = saved === '1';
+    else el.value = saved;
+  }
+  el.addEventListener('change', () => {
+    localStorage.setItem(`vc.${key}`, el.type === 'checkbox' ? (el.checked ? '1' : '0') : el.value);
+  });
+}
 
 void refresh();
 setInterval(() => {

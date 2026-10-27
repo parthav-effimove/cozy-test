@@ -26,9 +26,15 @@ export type Tolerances = {
   rate: number;
   /** Per-field overrides keyed by the expected-output path; they win over both groups. */
   fields: Record<string, number>;
+  /**
+   * Fields switched off in the dashboard, keyed by the expected-output path. They are left out of the
+   * comparison entirely: no check, no mismatch line. For values that legitimately move (bunker prices,
+   * FuelEU penalties, FX rates) so a real regression is not buried under expected drift.
+   */
+  skip: Record<string, boolean>;
 };
 
-export const DEFAULT_TOLERANCES: Tolerances = { amount: 0.5, rate: 0.01, fields: {} };
+export const DEFAULT_TOLERANCES: Tolerances = { amount: 0.5, rate: 0.01, fields: {}, skip: {} };
 
 /** Labels use a subscript ₂ in the app, so normalise it before comparing. */
 export const normLabel = (s: string) => s.replace(/₂/g, '2').replace(/\s+/g, ' ').trim().toLowerCase();
@@ -52,9 +58,9 @@ export function resolveTolerances(raw: unknown, legacy?: unknown): Tolerances {
   if (!isObject) {
     if (legacy !== undefined && legacy !== null && legacy !== '') {
       const value = asTolerance(legacy, DEFAULT_TOLERANCES.amount);
-      return { amount: value, rate: value, fields: {} };
+      return { amount: value, rate: value, fields: {}, skip: {} };
     }
-    return { amount: DEFAULT_TOLERANCES.amount, rate: DEFAULT_TOLERANCES.rate, fields: {} };
+    return { ...DEFAULT_TOLERANCES, fields: {}, skip: {} };
   }
   const src = raw as Record<string, unknown>;
   const fields: Record<string, number> = {};
@@ -63,10 +69,15 @@ export function resolveTolerances(raw: unknown, legacy?: unknown): Tolerances {
     const n = Number(value);
     if (path && Number.isFinite(n) && n >= 0) fields[path] = n;
   }
+  // Only fields explicitly switched off are stored, so a new field is checked by default.
+  const skip: Record<string, boolean> = {};
+  const rawSkip = src.skip !== null && typeof src.skip === 'object' ? (src.skip as Record<string, unknown>) : {};
+  for (const [path, value] of Object.entries(rawSkip)) if (path && value) skip[path] = true;
   return {
     amount: asTolerance(src.amount, DEFAULT_TOLERANCES.amount),
     rate: asTolerance(src.rate, DEFAULT_TOLERANCES.rate),
     fields,
+    skip,
   };
 }
 
@@ -104,6 +115,8 @@ export function compareRows(
   let cursor = 0;
   let checked = 0;
   for (const field of fields) {
+    // Switched off in the dashboard: not looked up, not counted, never reported as a mismatch.
+    if (tolerances.skip[field.path]) continue;
     const want = readPath(expected, field.path);
     if (want === undefined || want === null) continue;
     const pattern = field.pattern ? new RegExp(field.pattern) : undefined;

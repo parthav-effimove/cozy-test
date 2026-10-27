@@ -64,6 +64,41 @@ test('a finished run is stored once, with its per-sheet results', () => {
   });
 });
 
+test('field history says which fields keep failing and on which sheets', () => {
+  withStore((store) => {
+    store.recordRun(
+      run({
+        id: 'run-1',
+        startedAt: 1000,
+        sheets: [
+          sheet(1, 'failed', [{ field: 'Gross Rate', expected: '8.75', actual: '$ 0.00 /mt' }]),
+          sheet(2, 'failed', [{ field: 'Gross Rate', expected: '9.43', actual: '$ 0.00 /mt' }]),
+        ],
+      }),
+    );
+    store.recordRun(
+      run({
+        id: 'run-2',
+        startedAt: 3000,
+        sheets: [sheet(1, 'failed', [{ field: 'Gross Rate', expected: '8.75', actual: '$ 0.00 /mt' }, { field: 'Total Time', expected: '34.72', actual: '34.70' }]), sheet(2, 'saved')],
+      }),
+    );
+
+    const { totalRuns, fields } = store.fieldHistory('test 2');
+    assert.equal(totalRuns, 2);
+    const gross = fields.find((f) => f.field === 'Gross Rate');
+    assert.equal(gross.runs, 2, 'failed in both runs');
+    assert.equal(gross.failures, 3, 'three sheet failures in total');
+    assert.deepEqual(gross.sheets, ['balast/sheet1.json', 'balast/sheet2.json']);
+    assert.equal(gross.last.expected, '8.75');
+
+    const time = fields.find((f) => f.field === 'Total Time');
+    assert.equal(time.runs, 1);
+    assert.deepEqual(time.sheets, ['balast/sheet1.json']);
+    assert.equal(fields[0].field, 'Gross Rate', 'most frequent field first');
+  });
+});
+
 test('history tells a sheet that always fails from a flaky one', () => {
   withStore((store) => {
     for (const [n, second] of [[0, 'failed'], [1, 'saved'], [2, 'failed']]) {

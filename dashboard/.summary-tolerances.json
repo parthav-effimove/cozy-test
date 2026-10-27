@@ -4,5 +4,6 @@
   "fields": {
     "hire.incl_hire": 1,
     "hire.excl_hire": 1
-  }
+  },
+  "skip": {}
 }

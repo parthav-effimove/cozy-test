@@ -7,6 +7,7 @@ screenshots/
 # dashboard runtime state
 dashboard/history.json
 dashboard/logs/
+dashboard/artifacts/
 dashboard/mapping.json
 dashboard/.summary-map.json
 # sheet notes + per-workbook run history (SQLite)

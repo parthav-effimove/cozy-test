@@ -1,0 +1,7 @@
+{
+  "id": "cf4feb29-e028-4b4c-824f-6c14b726cf2d",
+  "text": "",
+  "error": "the model returned an empty summary",
+  "model": "openai/gpt-oss-20b",
+  "at": 1793011163092
+}

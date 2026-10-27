@@ -94,16 +94,42 @@ test('an empty Voyage Summary is its own outcome, not a silent pass', () => {
 });
 
 test('config: group defaults, legacy single value and bad input', () => {
-  expect(resolveTolerances({ amount: 2, rate: 0.05 })).toEqual({ amount: 2, rate: 0.05, fields: {} });
+  expect(resolveTolerances({ amount: 2, rate: 0.05 })).toEqual({ amount: 2, rate: 0.05, fields: {}, skip: {} });
   // Old dashboards saved one number that applied to everything.
-  expect(resolveTolerances(undefined, '0.2')).toEqual({ amount: 0.2, rate: 0.2, fields: {} });
-  expect(resolveTolerances(undefined, undefined)).toEqual({ amount: 0.5, rate: 0.01, fields: {} });
+  expect(resolveTolerances(undefined, '0.2')).toEqual({ amount: 0.2, rate: 0.2, fields: {}, skip: {} });
+  expect(resolveTolerances(undefined, undefined)).toEqual({ amount: 0.5, rate: 0.01, fields: {}, skip: {} });
   // Negative, non-numeric and non-object values fall back instead of loosening the check.
   expect(resolveTolerances({ amount: -1, rate: 'x', fields: { 'hire.incl_hire': -5, 'eu_ets.total_co2_t': 0 } })).toEqual({
     amount: 0.5,
     rate: 0.01,
     fields: { 'eu_ets.total_co2_t': 0 },
+    skip: {},
   });
+});
+
+test('a field switched off is not checked and never reported', () => {
+  // The wind factor is 0.25 off, which fails as a rate; switched off, it must not be mentioned.
+  const tolerances = resolveTolerances({ skip: { 'fuel_eu_maritime.wind_reward_factor': true } });
+  const result = compareRows(ROWS, EXPECTED, FIELDS, tolerances, 'sheet 1 LEO');
+  expect(result.checked).toBe(5);
+  expect(badFields(result)).toEqual([]);
+});
+
+test('a field switched off is not reported even when its row is missing', () => {
+  const rows = ROWS.filter((row) => row.label !== 'Wind Reward Factor');
+  const tolerances = resolveTolerances({ skip: { 'fuel_eu_maritime.wind_reward_factor': 'true' } });
+  const result = compareRows(rows, EXPECTED, FIELDS, tolerances, 'sheet 1 LEO');
+  expect(result.checked).toBe(5);
+  expect(badFields(result)).toEqual([]);
+});
+
+test('only fields explicitly switched off are skipped; everything else stays checked', () => {
+  const tolerances = resolveTolerances({ skip: { 'hire.incl_hire': true, 'eu_ets.total_co2_t': false } });
+  expect(tolerances.skip).toEqual({ 'hire.incl_hire': true });
+  const result = compareRows(ROWS, EXPECTED, FIELDS, tolerances, 'sheet 1 LEO');
+  // Incl Hire drops out, so only the wind factor still fails.
+  expect(result.checked).toBe(5);
+  expect(badFields(result)).toEqual(['Wind Reward Factor: wanted 1.25, got 1.00']);
 });
 
 test('toleranceFor: override, money group, rate group, quantity group', () => {

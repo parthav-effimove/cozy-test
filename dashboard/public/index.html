@@ -21,6 +21,22 @@
         <span class="toggle-track"><span class="toggle-thumb"></span></span>
         <span class="toggle-label" title="Runs headed Chrome. Keep this on: the app only answers port searches for a visible browser, so headless runs stall on ports.">Watch browser</span>
       </label>
+      <label class="select-field" title="How much the browser pauses around every action. A six-leg sheet is hundreds of actions, so Fast finishes far sooner; Watch is easiest to follow.">
+        <span>Speed</span>
+        <select id="speed">
+          <option value="watch">Watch</option>
+          <option value="normal" selected>Normal</option>
+          <option value="fast">Fast</option>
+        </select>
+      </label>
+      <label class="select-field" title="Workbook runs use 2 browsers by default: shard 1 creates the workbook and starts its sheets, then shard 2 joins that same workbook. Pick 1 to use a single browser.">
+        <span>Shards</span>
+        <select id="shards">
+          <option value="1">1</option>
+          <option value="2" selected>2</option>
+        </select>
+      </label>
+      <button type="button" class="btn btn-quiet" id="preflight" title="Check the app, the login and port suggestions before running a long test">Check app</button>
       <button type="button" class="btn btn-danger" id="stopRun" title="Kill the running test: Playwright and its browser" hidden>Kill run</button>
       <span class="conn" id="conn" title="Server connection">Connected</span>
     </header>
@@ -288,6 +304,23 @@
           <button type="button" class="icon-btn" id="historyClose" aria-label="Close">×</button>
         </div>
         <div class="history-summary" id="historySummary"></div>
+        <h3 class="history-subhead">Failing fields</h3>
+        <div class="table-wrap">
+          <table class="grid" id="wbFieldTable">
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th class="num">Failed in</th>
+                <th class="num">Times</th>
+                <th>Sheets</th>
+                <th>Last difference</th>
+                <th class="right"></th>
+              </tr>
+            </thead>
+            <tbody id="wbFieldRows"></tbody>
+          </table>
+          <p class="empty" id="wbFieldEmpty" hidden>No field differences recorded yet.</p>
+        </div>
         <h3 class="history-subhead">Sheets</h3>
         <div class="table-wrap">
           <table class="grid" id="wbSheetTable">
@@ -366,6 +399,21 @@
           <span class="validation" id="outputStatus"></span>
           <button type="button" class="btn" id="outputCancel">Cancel</button>
           <button type="button" class="btn btn-primary" id="outputSave">Create &amp; map</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="artifactDialog" class="dialog dialog-wide">
+      <div class="dialog-body">
+        <div class="dialog-head">
+          <h2 id="artifactTitle">Screenshots &amp; recordings</h2>
+          <button type="button" class="icon-btn" id="artifactClose" aria-label="Close">×</button>
+        </div>
+        <p class="hint" id="artifactHint"></p>
+        <div class="artifact-grid" id="artifactBody"></div>
+        <div class="dialog-foot">
+          <span class="validation" id="artifactStatus"></span>
+          <button type="button" class="btn" id="artifactDone">Close</button>
         </div>
       </div>
     </dialog>

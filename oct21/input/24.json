@@ -1,0 +1,379 @@
+{
+  "vessel": {
+    "gt": 32987,
+    "dwt": 56594,
+    "imo": "9491408",
+    "loa": 0,
+    "beam": 0,
+    "name": "APJ SHIRIN",
+    "type": "Supramax (Dwt 50-60k)",
+    "cubic": 71634,
+    "draft": 12.816,
+    "owner": "",
+    "tpcTpi": 58.8,
+    "builder": "",
+    "builtYear": 0,
+    "cubicUnit": "cbm",
+    "consumption": {
+      "ae": {
+        "canal": 0.2,
+        "ecoLaden": 0.2,
+        "ecoBallast": 0.2
+      },
+      "hsfo": {
+        "canal": 0,
+        "ecoLaden": 0,
+        "ecoBallast": 0
+      },
+      "lsmgo": {
+        "canal": 2.2,
+        "ecoLaden": 26,
+        "ecoBallast": 24
+      },
+      "speed": {
+        "canal": 0,
+        "ecoLaden": 12,
+        "ecoBallast": 12.5
+      },
+      "vlsfo": {
+        "canal": 2.2,
+        "ecoLaden": 26,
+        "ecoBallast": 24
+      },
+      "aeScrubber": {
+        "canal": 0,
+        "ecoLaden": 0,
+        "ecoBallast": 0
+      }
+    },
+    "hasScrubber": false,
+    "speedProfile": "eco",
+    "scrubberCount": 0,
+    "ecoConsumption": {
+      "ae": {
+        "idle": 0.2,
+        "load": 0.2,
+        "canal": 0.2,
+        "laden": 0.2,
+        "misc1": 0,
+        "misc2": 0,
+        "ballast": 0.2,
+        "discharge": 0.2
+      },
+      "hsfo": {
+        "idle": 0,
+        "load": 0,
+        "canal": 0,
+        "laden": 0,
+        "misc1": 0,
+        "misc2": 0,
+        "ballast": 0,
+        "discharge": 0
+      },
+      "lsmgo": {
+        "idle": 2.2,
+        "load": 4.5,
+        "canal": 2.2,
+        "laden": 26,
+        "misc1": 0,
+        "misc2": 0,
+        "ballast": 24,
+        "discharge": 4.5
+      },
+      "speed": {
+        "idle": 0,
+        "load": 0,
+        "canal": 0,
+        "laden": 12,
+        "misc1": 0,
+        "misc2": 0,
+        "ballast": 12.5,
+        "discharge": 0
+      },
+      "vlsfo": {
+        "idle": 2.2,
+        "load": 4.5,
+        "canal": 2.2,
+        "laden": 26,
+        "misc1": 0,
+        "misc2": 0,
+        "ballast": 24,
+        "discharge": 4.5
+      },
+      "aeScrubber": {
+        "idle": 0,
+        "load": 0,
+        "canal": 0,
+        "laden": 0,
+        "misc1": 0,
+        "misc2": 0,
+        "ballast": 0,
+        "discharge": 0
+      }
+    },
+    "hsfoCapability": false,
+    "miscMultiplier": 0,
+    "fullConsumption": {
+      "ae": {
+        "idle": 2.6,
+        "load": 2.6,
+        "canal": 1.73,
+        "laden": 1.73,
+        "misc1": 0,
+        "misc2": 0,
+        "ballast": 1.73,
+        "discharge": 2.6
+      },
+      "hsfo": {
+        "idle": 0,
+        "load": 0,
+        "canal": 0,
+        "laden": 0,
+        "misc1": 0,
+        "misc2": 0,
+        "ballast": 0,
+        "discharge": 0
+      },
+      "lsmgo": {
+        "idle": 0,
+        "load": 0,
+        "canal": 35.56,
+        "laden": 35.56,
+        "misc1": 0,
+        "misc2": 0,
+        "ballast": 35.56,
+        "discharge": 0
+      },
+      "speed": {
+        "idle": 0,
+        "load": 0,
+        "canal": 0,
+        "laden": 12.5,
+        "misc1": 0,
+        "misc2": 0,
+        "ballast": 13,
+        "discharge": 0
+      },
+      "vlsfo": {
+        "idle": 0,
+        "load": 0,
+        "canal": 35.56,
+        "laden": 35.56,
+        "misc1": 0,
+        "misc2": 0,
+        "ballast": 35.56,
+        "discharge": 0
+      },
+      "aeScrubber": {
+        "idle": 0,
+        "load": 0,
+        "canal": 0,
+        "laden": 0,
+        "misc1": 0,
+        "misc2": 0,
+        "ballast": 0,
+        "discharge": 0
+      }
+    },
+    "loadDischIdleSame": false
+  },
+  "sequence": [
+    {
+      "id": 1,
+      "port": "",
+      "type": "open",
+      "draft": 0,
+      "expDa": 0,
+      "terms": "",
+      "cranes": 0,
+      "season": "summer",
+      "ukZone": null,
+      "ecaTime": 0,
+      "seaTime": 0,
+      "distance": 0,
+      "quantity": 0,
+      "turnTime": 0,
+      "extraTime": 0,
+      "portUnloc": "",
+      "seaMargin": 0,
+      "wdaysUnit": "VL",
+      "ukcPercent": 0,
+      "baseSeaTime": 0,
+      "ecaDistance": 0,
+      "portFuelType": "vlsfo",
+      "portMaxDraft": 0,
+      "productivity": 0,
+      "totalLegTime": 0,
+      "bunkeringHsfo": 0,
+      "seaMarginTime": 0,
+      "stowageFactor": 0,
+      "bunkeringLsmgo": 0,
+      "bunkeringVlsfo": 0,
+      "customTermsName": "",
+      "legDepartureUtc": "2026-09-28T06:00",
+      "coefficientFactor": 0,
+      "calculatedPortDays": 0,
+      "distanceSpeedContext": "EV",
+      "ecaDistanceSpeedContext": "EL"
+    },
+    {
+      "id": 2,
+      "port": "Haldia",
+      "type": "port",
+      "draft": 0,
+      "expDa": 0,
+      "terms": "shinc",
+      "ukEts": false,
+      "cranes": 4,
+      "portId": 51912,
+      "ukZone": null,
+      "ecaTime": 0,
+      "isEuEea": false,
+      "layTime": 24,
+      "seaTime": 0,
+      "distance": 0,
+      "quantity": 5000,
+      "turnTime": 0,
+      "extraTime": 0,
+      "operation": "loading",
+      "portUnloc": "INHAL",
+      "seaMargin": 5,
+      "wdaysUnit": "VL",
+      "ukcPercent": 0,
+      "baseSeaTime": 0,
+      "coordinates": [
+        88.0653,
+        22.0045
+      ],
+      "ecaDistance": 0,
+      "portCountry": "india",
+      "portFuelType": "vlsfo",
+      "portMaxDraft": 0,
+      "productivity": 1000,
+      "totalLegTime": 0,
+      "bunkeringHsfo": 0,
+      "legArrivalUtc": "2026-09-28T06:00",
+      "seaMarginTime": 0,
+      "stowageFactor": 0,
+      "bunkeringLsmgo": 0,
+      "bunkeringVlsfo": 0,
+      "customTermsName": "",
+      "legDepartureUtc": "2026-09-28T06:00",
+      "coefficientFactor": 1,
+      "calculatedPortDays": 5,
+      "distanceSpeedContext": "EV",
+      "ecaDistanceSpeedContext": "EL"
+    },
+    {
+      "id": 3,
+      "port": "Rotterdam",
+      "type": "port",
+      "draft": 0,
+      "expDa": 0,
+      "terms": "shinc",
+      "ukEts": false,
+      "cranes": 4,
+      "portId": 50024,
+      "ukZone": null,
+      "ecaTime": 8.516666666666667,
+      "isEuEea": true,
+      "layTime": 24,
+      "seaTime": 20.59166666666667,
+      "distance": 5648,
+      "quantity": 5000,
+      "turnTime": 0,
+      "extraTime": 0,
+      "operation": "discharging",
+      "portUnloc": "NLRTM",
+      "seaMargin": 5,
+      "wdaysUnit": "VL",
+      "ukcPercent": 0,
+      "baseSeaTime": 27.72222222222222,
+      "coordinates": [
+        4.5,
+        51.91667
+      ],
+      "ecaDistance": 2336,
+      "portCountry": "netherlands",
+      "portFuelType": "lsmgo",
+      "portMaxDraft": 0,
+      "productivity": 1000,
+      "totalLegTime": 29.108333333333334,
+      "bunkeringHsfo": 0,
+      "legArrivalUtc": "2026-11-01T08:36",
+      "seaMarginTime": 1.386111111111111,
+      "stowageFactor": 0,
+      "bunkeringLsmgo": 0,
+      "bunkeringVlsfo": 0,
+      "customTermsName": "",
+      "legDepartureUtc": "2026-10-03T06:00",
+      "coefficientFactor": 1,
+      "calculatedPortDays": 5,
+      "distanceSpeedContext": "EV",
+      "ecaDistanceSpeedContext": "EL"
+    }
+  ],
+  "cargos": [
+    {
+      "id": 1,
+      "rate": 90,
+      "ntcBase": 8000,
+      "quantity": 0,
+      "rateType": "mt",
+      "gtcTarget": 12000,
+      "worldscale": 100,
+      "averageMode": "average",
+      "despatchRate": 0,
+      "tcCommission": 3.75,
+      "demurrageRate": 0,
+      "stowageFactor": 1.4,
+      "despatchAmount": 0,
+      "demurrageAmount": 0,
+      "voyageCommission": 0
+    }
+  ],
+  "bunker": {
+    "hsfo": {
+      "price": 400,
+      "robStart": 0
+    },
+    "lsmgo": {
+      "price": 400,
+      "robStart": 0
+    },
+    "vlsfo": {
+      "price": 400,
+      "robStart": 0
+    },
+    "fuelMode": "average",
+    "euEtsHsfo": 0,
+    "ignoreBOB": false,
+    "euEtsLsmgo": 0,
+    "euEtsPrice": 90,
+    "euEtsVlsfo": 0,
+    "ukEtsPrice": 0,
+    "rewardFactor": 1,
+    "portBunkering": []
+  },
+  "misc": {
+    "miscCost": 0,
+    "extraFees": 0,
+    "extraInsurance": 0,
+    "canalCost1": 0,
+    "canalFuel": "vlsfo",
+    "extraTime": {
+      "canal1": {
+        "mode": "VL",
+        "value": 0,
+        "unit": "days"
+      }
+    }
+  },
+  "hireRate": 962.5,
+  "vesselCost": 962.5,
+  "gtc": 1000,
+  "ntc": 962.5,
+  "tcCommission": 3.75,
+  "netBB": 0,
+  "grossBB": 0
+}

@@ -93,6 +93,9 @@ const PORT_COUNTRY: Record<string, string> = {
 };
 
 async function searchAndPick(page: Page, input: ReturnType<Page['getByPlaceholder']>, query: string, api: string) {
+  // A blank name has no backend row (an opening leg can be exported without a port); the caller
+  // leaves that field empty rather than spending six retries on an empty suggestion list.
+  if (!query.trim()) return '';
   // The port/vessel lookup hits the backend, which is occasionally slow or empty on the first
   // keystrokes, so retry a few times with generous waits before giving up.
   for (let attempt = 1; attempt <= 6; attempt++) {
@@ -343,15 +346,30 @@ const SOURCE_LABEL = LIST ? (LIST.name ?? 'workbook') : (DIR ?? FILE);
 // Project-relative key for a source file, so two folders holding a sheet1.json stay distinct.
 const relKey = (f: string) => relative(process.cwd(), resolve(f)).split(sep).join('/');
 // Keep each sheet's source file name so its expected Voyage Summary can be found by the same name.
-const ENTRIES = SOURCES.flatMap((f, i) => {
+const ALL_ENTRIES = SOURCES.flatMap((f, i) => {
   const all = loadSheets(f);
   const entry = LIST?.sheets[i];
   const index = entry && typeof entry === 'object' ? entry.index : undefined;
   const picked = typeof index === 'number' ? all.slice(index, index + 1) : all;
   return picked.map((s) => ({ s, file: basename(f), key: relKey(f) }));
 });
+
+// Sharded run: N browsers append into ONE workbook, each taking every Nth sheet (round-robin, so
+// every shard gets a mix of vessels). Sheet numbers stay global and the workbook is created by the
+// first shard only, so the dashboard can merge all shard logs into a single run.
+const SHARD_COUNT = Math.max(1, Number(process.env.REPLAY_SHARD_COUNT ?? 1) || 1);
+const SHARD_INDEX = Math.min(Math.max(0, Number(process.env.REPLAY_SHARD_INDEX ?? 0) || 0), SHARD_COUNT - 1);
+const PICKED = ALL_ENTRIES.map((entry, idx) => ({ entry, g: idx + 1 })).filter(
+  ({ g }) => SHARD_COUNT === 1 || (g - 1) % SHARD_COUNT === SHARD_INDEX,
+);
+const ENTRIES = PICKED.map((p) => p.entry);
+// 1-based global sheet number for each entry this shard replays.
+const SHEET_NO = PICKED.map((p) => p.g);
+const TOTAL_SHEETS = ALL_ENTRIES.length;
 const sheets: Sheet[] = ENTRIES.map((e) => e.s);
-if (sheets.length === 0) throw new Error(`nothing to replay: ${SOURCE_LABEL} holds no sheets`);
+if (TOTAL_SHEETS === 0) throw new Error(`nothing to replay: ${SOURCE_LABEL} holds no sheets`);
+if (sheets.length === 0)
+  throw new Error(`shard ${SHARD_INDEX + 1}/${SHARD_COUNT} of ${SOURCE_LABEL} has no sheets to replay`);
 
 // Voyage Summary expectations: the matching file name in SUMMARY_DIR holds the expected values.
 const SUMMARY_DIR = process.env.SUMMARY_DIR ?? 'sheets/ballast-op';
@@ -414,6 +432,37 @@ const SUMMARY_FIELDS: SummaryField[] = JSON.parse(
 ) as SummaryField[];
 
 // Compares the Voyage Summary on screen with the expected output file's values.
+type SequenceRow = { id: number; type: string };
+
+/**
+ * The Sequence table's physical rows, in leg order.
+ *
+ * The app always ends the table with a permanent Repos row, and Add inserts new legs *before* it,
+ * so ids run Open=1, Load=2, Disch=3, then 5, 6, … for added legs, with the Repos row keeping a
+ * lower id while sitting last. Sorting by id and moving Repos rows to the end therefore gives the
+ * leg order, and each leg must be addressed by its row id — never by its position.
+ */
+async function readSequenceRows(page: Page): Promise<{ legs: SequenceRow[]; repos: SequenceRow[] }> {
+  const rows = await page.evaluate(() => {
+    const out: { id: number; type: string }[] = [];
+    document.querySelectorAll('tr').forEach((tr) => {
+      const wrap = tr.querySelector('[id^="v-sequence-port-"]') as HTMLElement | null;
+      if (!wrap) return;
+      const id = Number((wrap.id.match(/(\d+)$/) ?? [])[1]);
+      const btn = tr.querySelector('button[title="Type / reorder"]') as HTMLElement | null;
+      const first = tr.querySelector('td');
+      const type = btn ? (btn.textContent ?? '').trim() : (first?.textContent ?? '').trim();
+      out.push({ id, type });
+    });
+    return out;
+  });
+  const isRepos = (row: SequenceRow) => /^repos$/i.test(row.type);
+  return {
+    legs: rows.filter((r) => !isRepos(r)).sort((a, b) => a.id - b.id),
+    repos: rows.filter(isRepos),
+  };
+}
+
 /** True when the open sheet has no port picked yet, i.e. it is safe to fill from leg 1. */
 async function sheetIsBlank(page: Page): Promise<boolean> {
   const values = await page
@@ -445,7 +494,8 @@ async function compareSummary(page: Page, expected: unknown, who: string) {
 }
 
 test.describe(LIST?.name ?? 'oct21.json replay', () => {
-  test(`replay ${sheets.length} sheets from ${SOURCE_LABEL}`, async ({ page }) => {
+  const shardTag = SHARD_COUNT > 1 ? ` (shard ${SHARD_INDEX + 1}/${SHARD_COUNT}: ${sheets.length} sheets)` : '';
+  test(`replay ${sheets.length} sheets from ${SOURCE_LABEL}${shardTag}`, async ({ page }) => {
     test.setTimeout(3_600_000);
     const visible = await ensureDashboard(page);
     if (skipIfNoCalculator(visible)) test.skip(true);
@@ -454,29 +504,55 @@ test.describe(LIST?.name ?? 'oct21.json replay', () => {
     page.on('pageerror', (e) => appErrors.push(`pageerror: ${String(e).slice(0, 200)}`));
 
     const workbook = process.env.WORKBOOK_NAME ?? LIST?.name ?? `oct21 replay ${Date.now()}`;
+    const WORKBOOK_CREATE = process.env.WORKBOOK_CREATE !== '0';
     console.log(`--- workbook: ${workbook}`);
+    if (SHARD_COUNT > 1) console.log(`--- shard ${SHARD_INDEX + 1}/${SHARD_COUNT}: sheets ${SHEET_NO.join(', ')} of ${TOTAL_SHEETS}`);
     const overrides = Object.keys(SUMMARY_TOLERANCES.fields).length;
+    const skipped = Object.keys(SUMMARY_TOLERANCES.skip);
     console.log(
       `--- tolerance: amounts ±${SUMMARY_TOLERANCES.amount}, rates/quantities ±${SUMMARY_TOLERANCES.rate}` +
-        (overrides ? `, ${overrides} field override(s)` : ''),
+        (overrides ? `, ${overrides} field override(s)` : '') +
+        (skipped.length ? `, ${skipped.length} field(s) not checked: ${skipped.join(', ')}` : ''),
     );
-    await page.getByRole('button', { name: /new workbook/i }).first().click();
-    await page.getByPlaceholder('Workbook name').fill(workbook);
-    await page.getByRole('button', { name: /^create$/i }).click();
+    // A shared sharded run: shard 1 creates the workbook, the others wait for it to appear and open
+    // it, so every shard's sheets end up in the one workbook the test is named after.
     const row = page.locator('tr', { hasText: workbook }).first();
-    await expect(row).toBeVisible({ timeout: 30_000 });
+    if (WORKBOOK_CREATE) {
+      await page.getByRole('button', { name: /new workbook/i }).first().click();
+      await page.getByPlaceholder('Workbook name').fill(workbook);
+      await page.getByRole('button', { name: /^create$/i }).click();
+      await expect(row).toBeVisible({ timeout: 30_000 });
+      // The dashboard waits for this line before launching the other shards' browsers: they read the
+      // workbook list only when their page loads, so they must open after the workbook exists.
+      console.log(`--- workbook created: ${workbook}`);
+    } else {
+      console.log(`--- waiting for shard 1 to create the workbook "${workbook}"`);
+      let found = false;
+      let attempt = 0;
+      for (; attempt < 15 && !found; attempt++) {
+        found = await row.first().isVisible().catch(() => false);
+        if (found) break;
+        await page.waitForTimeout(3000);
+        // The list is only refetched on a reload; logging in again is not needed (session is stored).
+        await ensureDashboard(page);
+      }
+      if (!found) throw new Error(`workbook "${workbook}" was never created: shard 1 failed before making it`);
+      console.log(`--- joined the workbook "${workbook}" after ${attempt} attempt(s)`);
+    }
     await row.getByRole('button', { name: /^open$/i }).click();
     await expect(page.getByPlaceholder('Search vessel...').first()).toBeVisible({ timeout: 60_000 });
 
     for (let i = 0; i < sheets.length; i++) {
       const s = sheets[i];
-      console.log(`--- sheet ${i + 1}/${sheets.length}: ${s.vessel.name}`);
-      // The app opens a workbook on its last sheet. Re-running a workbook name that already exists
-      // in the app therefore lands on a previous run's sheet, so start a fresh one when the open
-      // sheet already has ports picked; filling over it would break the leg count.
-      const blank = i === 0 ? await sheetIsBlank(page) : false;
-      if (i === 0 && !blank) {
-        console.log('--- workbook already exists in the app: starting a new sheet instead of filling a saved one');
+      // `g` is the sheet's 1-based number in the whole workbook, so shard logs line up as one run.
+      const g = SHEET_NO[i];
+      console.log(`--- sheet ${g}/${TOTAL_SHEETS}: ${s.vessel.name}`);
+      // The app opens a workbook on its last sheet, and in a sharded run that sheet belongs to another
+      // shard. Start a new sheet whenever the open one already has ports picked; filling over it would
+      // break the leg count (and overwrite work another shard just saved).
+      const blank = await sheetIsBlank(page);
+      if (!blank && i === 0) {
+        console.log('--- open sheet already has ports: starting a new sheet instead of filling a saved one');
       }
       if (!blank) {
         await page.getByRole('button', { name: /^new sheet$/i }).first().click();
@@ -493,7 +569,7 @@ test.describe(LIST?.name ?? 'oct21.json replay', () => {
         await scrubbers.selectOption(s.vessel.hasScrubber ? 'Y' : 'N');
         await page.waitForTimeout(300);
       }
-      await fillMatrixSettled(page, s, `sheet ${i + 1} ${s.vessel.name} (after vessel)`);
+      await fillMatrixSettled(page, s, `sheet ${g} ${s.vessel.name} (after vessel)`);
 
       // 2a. Cargo cards: add one per JSON cargo (card 1 exists) and expand each, since cards start collapsed.
       for (let k = 2; k <= s.cargos.length; k++) {
@@ -507,28 +583,71 @@ test.describe(LIST?.name ?? 'oct21.json replay', () => {
         }
       }
 
-      // 2. Ports: a fresh sheet already has rows (Open, Load, Disch). Add only the missing legs, then pick each port.
-      const existingRows = await page.getByPlaceholder('Select port...').count();
+      // 2. Ports. The table starts with Open, Load, Disch and a permanent Repos row; a JSON whose
+      // last leg is a repos leg uses that row, every other leg needs a row of its own.
+      const wantsRepos = s.sequence[s.sequence.length - 1]?.type === 'repos';
+      const legCount = wantsRepos ? s.sequence.length - 1 : s.sequence.length;
+      let table = await readSequenceRows(page);
+      while (table.legs.length < legCount) {
+        const before = table.legs.length;
+        await page.getByRole('button', { name: /^add$/i }).first().click();
+        await expect
+          .poll(async () => (await readSequenceRows(page)).legs.length, { timeout: 20_000 })
+          .toBe(before + 1);
+        table = await readSequenceRows(page);
+      }
+      if (table.legs.length > legCount) {
+        console.log(
+          `--- sheet ${g}: ${table.legs.length - legCount} extra row(s) in the app are left blank (JSON has ${s.sequence.length} legs)`,
+        );
+      }
+      if (wantsRepos && table.repos.length === 0) {
+        throw new Error(`sheet ${g}: the JSON ends with a repos leg but the app has no Repos row`);
+      }
+      // Leg order -> physical row id. The repos leg (always last in the export) lives in the
+      // permanent Repos row, which cannot be created or retyped from the UI.
+      const ordered = (wantsRepos ? [...table.legs.slice(0, legCount), table.repos[table.repos.length - 1]] : table.legs.slice(0, legCount));
+      const rowFor = (p: number) => ordered[p].id;
+
       for (let p = 0; p < s.sequence.length; p++) {
         const leg = s.sequence[p];
-        if (p >= existingRows) {
-          const n = await page.getByPlaceholder('Select port...').count();
-          // A 'repos' leg uses the Repos button, which opens one port field. Other legs use Add.
-          const btn = leg.type === 'repos' ? /^repos$/i : /^add$/i;
-          await page.getByRole('button', { name: btn }).first().click();
-          await expect(page.getByPlaceholder('Select port...')).toHaveCount(n + 1, { timeout: 20_000 });
+        const id = rowFor(p);
+        const input = page.locator(`#v-sequence-port-${id}`).locator('input').first();
+        await expect(input, `sheet ${g}: leg ${p + 1} port field`).toBeVisible({ timeout: 20_000 });
+        // An exported sheet can have no opening port (`"type": "open", "port": ""`). A new sheet
+        // starts that way too, so leave it blank instead of searching for "" — the backend has no
+        // row for it and the whole run would abort here.
+        if (!leg.port.trim()) {
+          console.log(`--- sheet ${g}: leg ${p + 1} (${leg.type}) has no port in the JSON, leaving it blank`);
+          continue;
         }
-        const input = page.getByPlaceholder('Select port...').nth(p);
         await searchAndPick(page, input, PORT_SEARCH[leg.port] ?? leg.port, '/ports/search');
       }
 
-      // Set each leg's Type from the JSON operation after all ports are picked (the 'Open' row has no dropdown).
+      // Set each leg's Type from the JSON operation after all ports are picked. A Repos row has no
+      // Type menu (and is already what the export says), so those legs are skipped; rows that are
+      // already the wanted type are left alone rather than re-clicked.
       for (let p = 1; p < s.sequence.length; p++) {
-        const label = s.sequence[p].operation ? OPERATION_LABEL[s.sequence[p].operation!] : undefined;
+        const leg = s.sequence[p];
+        if (leg.type === 'repos') continue;
+        const label = leg.operation ? OPERATION_LABEL[leg.operation] : undefined;
         if (!label) continue;
-        await page.locator('button[title="Type / reorder"]').nth(p - 1).click();
+        const id = rowFor(p);
+        const row = page.locator(`#v-sequence-port-${id}`).locator('xpath=ancestor::tr[1]');
+        const typeBtn = row.locator('button[title="Type / reorder"]');
+        if ((await typeBtn.count()) === 0) {
+          console.log(`--- sheet ${g}: leg ${p + 1} (${leg.type}) has no Type menu, leaving it as it is`);
+          continue;
+        }
+        const current = (await typeBtn.textContent().catch(() => ''))?.trim() ?? '';
+        if (current.toLowerCase() === label.toLowerCase()) continue;
+        await typeBtn.click();
         await page.getByRole('menuitem', { name: label, exact: true }).click();
         await page.waitForTimeout(300);
+        const after = (await typeBtn.textContent().catch(() => ''))?.trim() ?? '';
+        if (after.toLowerCase() !== label.toLowerCase()) {
+          console.log(`--- sheet ${g}: leg ${p + 1} type says "${after}", wanted "${label}"`);
+        }
       }
 
       // Cargo assignment: each load/discharge leg lists the cargo ids it lifts or delivers.
@@ -537,8 +656,7 @@ test.describe(LIST?.name ?? 'oct21.json replay', () => {
         if (ids.length === 0) continue;
         // Find the select in this port's own row; the Open row has none, so index-based lookup misaligns.
         const select = page
-          .getByPlaceholder('Select port...')
-          .nth(p)
+          .locator(`#v-sequence-port-${rowFor(p)}`)
           .locator('xpath=ancestor::tr[1]')
           .locator('select[title="Assign one cargo to this port"]');
         if ((await select.count()) === 0) continue;
@@ -546,15 +664,21 @@ test.describe(LIST?.name ?? 'oct21.json replay', () => {
         await page.waitForTimeout(300);
       }
 
-      // Guard against blank legs: one port field per JSON leg, each with a port picked.
-      const portValues = await page.getByPlaceholder('Select port...').evaluateAll((els) => els.map((el) => (el as HTMLInputElement).value));
-      expect(portValues.length, 'port fields should match JSON legs').toBe(s.sequence.length);
-      expect(portValues.filter((v) => !v.trim()), 'blank port fields').toEqual([]);
+      // Guard against blank legs: every leg the JSON gives a port to must show one. A leg that is
+      // blank in the JSON stays blank on purpose.
+      const portValues: string[] = [];
+      for (let p = 0; p < s.sequence.length; p++) {
+        const input = page.locator(`#v-sequence-port-${rowFor(p)}`).locator('input').first();
+        portValues.push(await input.inputValue());
+      }
+      const lost = portValues.filter((v, p) => !v.trim() && (s.sequence[p]?.port ?? '').trim());
+      expect(lost, 'port fields blank although the JSON has a port').toEqual([]);
 
       // 3. Per-leg quantities and times (leg ids are 1-based, leg 1 is the opening leg).
       for (let p = 1; p < s.sequence.length; p++) {
         const leg = s.sequence[p];
-        const n = p + 1;
+        // Field suffixes are row ids, not positions: added legs sit before the trailing Repos row.
+        const n = rowFor(p);
         // Pssg and bunkering legs have no cargo quantity, mt/d, coefficient or draft inputs in the app.
         const hasCargoInputs = leg.operation !== 'pssg' && leg.operation !== 'bunkering' && leg.type !== 'repos';
         if (hasCargoInputs) {
@@ -575,7 +699,7 @@ test.describe(LIST?.name ?? 'oct21.json replay', () => {
       }
 
       // The app recalculates AE when the sequence changes, so fill the matrix again now that the legs exist.
-      await fillMatrixSettled(page, s, `sheet ${i + 1} ${s.vessel.name} (after sequence)`);
+      await fillMatrixSettled(page, s, `sheet ${g} ${s.vessel.name} (after sequence)`);
 
       // 4. Cargo.
       for (let k = 1; k <= s.cargos.length; k++) {
@@ -594,7 +718,7 @@ test.describe(LIST?.name ?? 'oct21.json replay', () => {
       await setField(page, '#v-cargo-gtc-_header', gtc);
       if (s.grossBB !== undefined) await setField(page, '#v-cargo-grossBB-_header', s.grossBB);
       // Check the derived values against the JSON totals, when given.
-      const who = `sheet ${i + 1} ${s.vessel.name}`;
+      const who = `sheet ${g} ${s.vessel.name}`;
       if (s.ntc !== undefined) await expectDerived(page, '#v-cargo-ntc-_', s.ntc, `${who} NTC`);
       if (s.netBB !== undefined) await expectDerived(page, '#v-cargo-netBB-_header', s.netBB, `${who} Net BB`);
 
@@ -629,20 +753,27 @@ test.describe(LIST?.name ?? 'oct21.json replay', () => {
       await setField(page, '#v-misc-miscCost-_', s.misc.miscCost);
       await setField(page, '#v-misc-extraFees-_', s.misc.extraFees);
       await setField(page, '#v-misc-extraInsurance-_', s.misc.extraInsurance);
-      await setField(page, '#v-misc-canalCost1-_', s.misc.canalCost1);
       // Canal time: the value goes in the input and the unit (days/hours) is picked from the select beside it.
       const canal = s.misc.extraTime.canal1;
       await setField(page, '#v-misc-canalTime-_', canal.value);
       await page.locator('#v-misc-canalTime-_').locator('xpath=following-sibling::select[1]').selectOption(canal.unit);
-      await page.waitForTimeout(1500);
+      await page.waitForTimeout(800);
+      // Canal cost last: picking a canal time re-derives the cost from the app's transit table, so the
+      // exported figure has to be written after it or it is silently replaced.
+      await setField(page, '#v-misc-canalCost1-_', s.misc.canalCost1);
+      await page.waitForTimeout(1200);
+      const canalShown = await page.locator('#v-misc-canalCost1-_').first().inputValue().catch(() => '');
+      if (Number(canalShown.replace(/,/g, '')) !== Number(s.misc.canalCost1)) {
+        console.log(`--- sheet ${g}: canal cost shows "${canalShown}", wanted ${s.misc.canalCost1}`);
+      }
 
       // Last word on the matrix: rewrite it once more, then report whatever still differs.
-      await settleMatrix(page, s, `sheet ${i + 1} ${s.vessel.name} (before save)`);
-      for (const m of await matrixMismatches(page, s)) mismatches.push(`sheet ${i + 1} ${s.vessel.name} ${m}`);
+      await settleMatrix(page, s, `sheet ${g} ${s.vessel.name} (before save)`);
+      for (const m of await matrixMismatches(page, s)) mismatches.push(`sheet ${g} ${s.vessel.name} ${m}`);
 
       // The UK ETS price is the last word on the bunker card: re-assert it after every other
       // field has settled, then read the summary.
-      await settleUkEts(page, s.bunker.ukEtsPrice, `sheet ${i + 1} ${s.vessel.name}`);
+      await settleUkEts(page, s.bunker.ukEtsPrice, `sheet ${g} ${s.vessel.name}`);
 
       // 5. Voyage Summary: compare with the expected output file when the sheet has one.
       const outFile = expectedFor(ENTRIES[i]);
@@ -664,24 +795,47 @@ test.describe(LIST?.name ?? 'oct21.json replay', () => {
         if (process.env.REQUIRE_EXPECTED === '1') mismatches.push(`${who}: no expected summary (${why})`);
       }
 
-      // 6. Save the sheet.
+      // 6. Save the sheet, naming it after its place in the test. Left unnamed, every sheet in a
+      // sharded workbook is "New Sheet 1" (the app appends " 1", " 2" …), so a tab cannot be traced
+      // back to the JSON entry it came from. Save opens a name field next to OK/Cancel, and the sheet
+      // is written when OK is pressed.
       await page.locator('#lovable-badge').evaluateAll((els) => els.forEach((el) => el.remove())).catch(() => {});
+      const sheetName = `${g} ${s.vessel.name}`.replace(/\s+/g, ' ').trim().slice(0, 40);
+      // A toast left over from the previous sheet would fake a confirmation for this one.
+      await page.getByText('Sheet saved').first().waitFor({ state: 'hidden', timeout: 4000 }).catch(() => {});
+      // The sheet toolbar's Save (title "Save Sheet") opens the name field; the role-based locator can
+      // resolve to a different save control that writes the sheet without offering a name.
+      const titled = page.locator('button[title="Save Sheet"]');
+      const saveBtn = (await titled.count()) > 0 ? titled.last() : page.getByRole('button', { name: /^save sheet$/i }).last();
       // The save toast is occasionally missed, so click again when it does not appear.
-      const saveBtn = page.getByRole('button', { name: /^save sheet$/i }).last();
       for (let attempt = 1; attempt <= 3; attempt++) {
-        await saveBtn.click();
+        await saveBtn.click().catch(() => {});
+        const nameField = page.locator('input.w-32').last();
+        const okBtn = page.getByRole('button', { name: /^OK$/ }).last();
+        // The field is rendered a beat after the click, so wait for it rather than probing once.
+        const named = await nameField
+          .waitFor({ state: 'visible', timeout: 6000 })
+          .then(() => true)
+          .catch(() => false);
+        if (named) {
+          await nameField.fill(sheetName).catch(() => {});
+          await okBtn.click().catch(() => {});
+        }
         const shown = await page
           .getByText('Sheet saved')
           .first()
           .waitFor({ state: 'visible', timeout: 12_000 })
           .then(() => true)
           .catch(() => false);
-        if (shown) break;
-        console.log(`sheet ${i + 1}: no save confirmation on attempt ${attempt}`);
+        if (shown) {
+          console.log(`--- named sheet ${g} "${sheetName}"${named ? '' : ' (app offered no name field)'}`);
+          break;
+        }
+        console.log(`sheet ${g}: no save confirmation on attempt ${attempt}`);
         await page.waitForLoadState('networkidle').catch(() => {});
       }
       await expect(page.getByText('Sheet saved').first()).toBeVisible({ timeout: 20_000 });
-      console.log(`saved sheet ${i + 1}/${sheets.length}`);
+      console.log(`saved sheet ${g}/${TOTAL_SHEETS}`);
     }
 
     expect(missingFields.size, `missing fields: ${[...missingFields].join(', ')}`).toBe(0);
